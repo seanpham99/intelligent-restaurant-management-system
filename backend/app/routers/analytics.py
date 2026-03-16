@@ -3,6 +3,7 @@ Analytics router: order flow, table turnover, and predictive insights for manage
 """
 from collections import Counter
 from fastapi import APIRouter, Depends
+from app.models.inventory import AlertType
 from app.models.order import OrderStatus
 from app.repositories.order_repository import OrderRepository
 from app.repositories.inventory_repository import InventoryRepository
@@ -16,16 +17,17 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 async def order_flow(order_repo: OrderRepository = Depends(get_order_repo)):
     """Aggregate counts of orders by status."""
     all_orders = await order_repo.get_all()
+    # Counter keys are strings (status values); use .value for consistent lookups
     counts = Counter(o.status.value for o in all_orders)
     total = len(all_orders)
     return {
         "total": total,
         "by_status": dict(counts),
-        "pending": counts.get(OrderStatus.PENDING, 0),
-        "in_progress": counts.get(OrderStatus.IN_PROGRESS, 0),
-        "ready": counts.get(OrderStatus.READY, 0),
-        "delivered": counts.get(OrderStatus.DELIVERED, 0),
-        "cancelled": counts.get(OrderStatus.CANCELLED, 0),
+        "pending": counts.get(OrderStatus.PENDING.value, 0),
+        "in_progress": counts.get(OrderStatus.IN_PROGRESS.value, 0),
+        "ready": counts.get(OrderStatus.READY.value, 0),
+        "delivered": counts.get(OrderStatus.DELIVERED.value, 0),
+        "cancelled": counts.get(OrderStatus.CANCELLED.value, 0),
     }
 
 
@@ -42,7 +44,13 @@ async def inventory_summary(
     """Return ingredients with their stock status."""
     ingredients = await inventory_repo.get_all_ingredients()
     alerts = await inventory_repo.get_all_alerts(resolved=False)
-    low_stock_ids = {a.ingredient_id for a in alerts}
+    # Only include ingredient_ids from low_stock alerts; temperature alerts
+    # have no ingredient_id (or a None one) and must not be counted here.
+    low_stock_ids = {
+        a.ingredient_id
+        for a in alerts
+        if a.alert_type == AlertType.LOW_STOCK and a.ingredient_id is not None
+    }
     return {
         "total_ingredients": len(ingredients),
         "low_stock_count": len(low_stock_ids),

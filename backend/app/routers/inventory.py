@@ -94,8 +94,9 @@ async def ingest_sensor_reading(
         return {"status": "processed", "alert_generated": alert is not None}
 
     if reading.sensor_type == "load_cell":
-        # Match sensor_id to ingredient by convention: sensor_id == ingredient_id
-        ingredient = await repo.get_ingredient_by_id(reading.sensor_id)
+        # Look up the ingredient by its stable sensor_id rather than its
+        # internal UUID, so real topic names like "bin-salmon" work correctly.
+        ingredient = await repo.get_ingredient_by_sensor_id(reading.sensor_id)
         if ingredient:
             updated = _inventory_service.apply_load_cell_reading(ingredient, reading)
             await repo.save_ingredient(updated)

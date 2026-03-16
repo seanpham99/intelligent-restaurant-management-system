@@ -100,10 +100,14 @@ alter table public.menu_items enable row level security;
 alter table public.ingredients enable row level security;
 alter table public.inventory_alerts enable row level security;
 
--- Allow all authenticated users to read menu items
+-- ── menu_items ────────────────────────────────────────────────────────────────
+
+-- Allow all users (including unauthenticated) to read menu items
 create policy "Menu items are publicly readable"
     on public.menu_items for select
     using (true);
+
+-- ── orders ────────────────────────────────────────────────────────────────────
 
 -- Allow authenticated users to insert orders
 create policy "Authenticated users can place orders"
@@ -115,7 +119,89 @@ create policy "Authenticated users can read orders"
     on public.orders for select
     using (auth.role() = 'authenticated');
 
--- Kitchen staff and managers can update orders
-create policy "Kitchen staff can update orders"
+-- Only kitchen staff and managers may update orders.
+-- Role is stored in public.users; the policy performs a sub-select to verify it.
+create policy "Kitchen staff and managers can update orders"
     on public.orders for update
+    using (
+        exists (
+            select 1 from public.users
+            where id = auth.uid()
+              and role in ('kitchen_staff', 'manager')
+        )
+    )
+    with check (
+        exists (
+            select 1 from public.users
+            where id = auth.uid()
+              and role in ('kitchen_staff', 'manager')
+        )
+    );
+
+-- ── order_items ───────────────────────────────────────────────────────────────
+
+-- Order items are readable by all authenticated users
+create policy "Authenticated users can read order items"
+    on public.order_items for select
     using (auth.role() = 'authenticated');
+
+-- Order items are inserted together with their parent order
+create policy "Authenticated users can insert order items"
+    on public.order_items for insert
+    with check (auth.role() = 'authenticated');
+
+-- ── ingredients ───────────────────────────────────────────────────────────────
+
+-- All authenticated users can read ingredient levels (e.g. for KDS context)
+create policy "Authenticated users can read ingredients"
+    on public.ingredients for select
+    using (auth.role() = 'authenticated');
+
+-- Only managers can create or update ingredient records
+create policy "Managers can manage ingredients"
+    on public.ingredients for all
+    using (
+        exists (
+            select 1 from public.users
+            where id = auth.uid()
+              and role = 'manager'
+        )
+    )
+    with check (
+        exists (
+            select 1 from public.users
+            where id = auth.uid()
+              and role = 'manager'
+        )
+    );
+
+-- ── inventory_alerts ──────────────────────────────────────────────────────────
+
+-- Kitchen staff and managers can read alerts
+create policy "Kitchen staff and managers can read alerts"
+    on public.inventory_alerts for select
+    using (
+        exists (
+            select 1 from public.users
+            where id = auth.uid()
+              and role in ('kitchen_staff', 'manager')
+        )
+    );
+
+-- Managers can insert and update (resolve) alerts
+create policy "Managers can manage alerts"
+    on public.inventory_alerts for all
+    using (
+        exists (
+            select 1 from public.users
+            where id = auth.uid()
+              and role = 'manager'
+        )
+    )
+    with check (
+        exists (
+            select 1 from public.users
+            where id = auth.uid()
+              and role = 'manager'
+        )
+    );

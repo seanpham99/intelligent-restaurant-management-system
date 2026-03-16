@@ -1,6 +1,8 @@
 import { useCallback } from 'react';
 import { usePolling } from '../hooks/usePolling';
+import { useRealtimeTable } from '../hooks/useRealtimeTable';
 import { InventoryAlertCard } from '../components/InventoryAlertCard';
+import type { InventoryAlert } from '../types';
 import {
   fetchOrderFlow,
   fetchKitchenLoad,
@@ -13,12 +15,19 @@ export function ManagerDashboardPage() {
   const orderFlowFetcher = useCallback(() => fetchOrderFlow(), []);
   const kitchenLoadFetcher = useCallback(() => fetchKitchenLoad(), []);
   const inventorySummaryFetcher = useCallback(() => fetchInventorySummary(), []);
+  // Alerts use Supabase Realtime for instant push updates (new alert = manager
+  // is notified immediately), with a 10s polling fallback for environments
+  // where Supabase credentials are not configured.
   const alertsFetcher = useCallback(() => fetchAlerts(false), []);
 
   const { data: orderFlow } = usePolling(orderFlowFetcher, 5000);
   const { data: kitchenLoad } = usePolling(kitchenLoadFetcher, 5000);
   const { data: inventorySummary } = usePolling(inventorySummaryFetcher, 10000);
-  const { data: alerts, refresh: refreshAlerts } = usePolling(alertsFetcher, 5000);
+  const { data: alerts, refresh: refreshAlerts } = useRealtimeTable<InventoryAlert>(
+    'inventory_alerts',
+    alertsFetcher,
+    10000
+  );
 
   const handleResolveAlert = async (alertId: string) => {
     try {

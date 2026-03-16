@@ -14,6 +14,10 @@ class IngredientBase(BaseModel):
     unit: str
     current_quantity: float = Field(ge=0)
     low_stock_threshold: float = Field(ge=0)
+    # Optional stable identifier published by the physical load-cell sensor.
+    # Allows the system to route MQTT readings to the correct ingredient
+    # without relying on the internal UUID.
+    sensor_id: Optional[str] = None
 
 
 class IngredientCreate(IngredientBase):

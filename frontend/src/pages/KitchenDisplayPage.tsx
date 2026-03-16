@@ -1,12 +1,20 @@
 import { useCallback } from 'react';
 import { OrderCard } from '../components/OrderCard';
-import { usePolling } from '../hooks/usePolling';
+import { useRealtimeTable } from '../hooks/useRealtimeTable';
 import { fetchOrderQueue, updateOrderStatus } from '../services/api';
-import type { OrderStatus } from '../types';
+import type { Order, OrderStatus } from '../types';
 
 export function KitchenDisplayPage() {
+  // Primary: Supabase Realtime subscription for instant updates when an order
+  // row changes.  Fallback: 5-second polling interval when Supabase is not
+  // configured (e.g. during local development without credentials).
   const queueFetcher = useCallback(() => fetchOrderQueue(), []);
-  const { data: orders, loading, error, refresh } = usePolling(queueFetcher, 3000);
+  const {
+    data: orders,
+    loading,
+    error,
+    refresh,
+  } = useRealtimeTable<Order>('orders', queueFetcher, 5000);
 
   const handleStatusChange = async (orderId: string, status: OrderStatus) => {
     try {

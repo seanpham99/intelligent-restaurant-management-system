@@ -26,7 +26,7 @@ A full-stack **Intelligent Restaurant Management System (IRMS)** leveraging IoT 
 | Frontend | Vite + TypeScript + React |
 | Backend | FastAPI (Python 3.12) |
 | Database | Supabase (PostgreSQL) |
-| Real-time | Supabase Realtime (WebSockets) |
+| Real-time | Supabase Realtime (WebSockets) + polling fallback |
 | Cache / Queue | Redis |
 | IoT Ingestion | MQTT (Eclipse Mosquitto) |
 | Deployment | Docker / Railway |
@@ -34,9 +34,10 @@ A full-stack **Intelligent Restaurant Management System (IRMS)** leveraging IoT 
 ## Features
 
 - **IoT-Based Ordering** – Smart menu UI for customers (QR/tablet)
-- **Real-Time KDS** – Kitchen Display System with live order queue (3-second polling + Supabase Realtime)
+- **Real-Time KDS** – Kitchen Display System powered by Supabase Realtime WebSocket subscriptions (`postgres_changes` on the `orders` table); 5-second polling fallback activates automatically when Supabase credentials are not present
+- **Real-Time Alerts** – Manager Dashboard subscribes to `inventory_alerts` via Supabase Realtime for instant notification of low-stock and temperature breach events; same 10-second polling fallback applies
 - **Smart Queue Prioritization** – Priority score based on wait time, dish complexity, and station load
-- **Inventory Tracking** – Load-cell and temperature sensor ingestion via MQTT
+- **Inventory Tracking** – Load-cell and temperature sensor ingestion via MQTT; sensors are mapped to ingredients by a stable `sensor_id` field (e.g. `bin-salmon`) instead of internal UUIDs
 - **Manager Dashboard** – Order flow analytics, kitchen load, inventory summary, alert management
 - **SOLID Architecture** – Abstract interfaces, dependency injection, single-responsibility services
 
