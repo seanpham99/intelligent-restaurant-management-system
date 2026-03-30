@@ -68,7 +68,9 @@ Ensure system stability, performance, and continuous operation.
 
 ![alt text](<Context Diagram-1.png>)
 <p align="center"><em>Context Diagram</em></p>
+
 ## 5. Use Case Overview
+
 **1. Place orders via IoT device**
 
 Customers place orders using QR menus or smart tablets without waiting for staff.
