@@ -74,40 +74,43 @@ Ensure system stability, performance, and continuous operation.
 ## 4. Use Case Overview
 
 **1. Place orders via IoT device**
+* Actor: Customer
+* Description: Customers place orders using QR menus or smart tablets without waiting for staff.
 
-Customers place orders using QR menus or smart tablets without waiting for staff.
+**2. Process payment**
 
-**2. Validate and process order to kitchen**
+* Actor: Customer
+* Description: Customers complete their payment update their table's payment status to "Paid".
 
-The system validates the order and categorizes items (e.g., drinks, appetizers, main dishes) before sending them to the appropriate kitchen stations.
+**3. Manage order queues**
 
-**3. Synchronize Order to Kitchen Display System**
+* Actor: Kitchen staff
+* Description: Kitchen staff view and prepare orders based on the prioritized lists on KDS and manage the workflow based on station load.
 
-Order is automatically transmitted to KDS for kitchen staff to view and prepare.
+**4. Update cooking status**
 
-**4. Display orders in KDS**
+* Actor: Kitchen staff
+* Description: Staff update the dished status as "Cooking" or "Ready" to synchronize progress between between dining area and dashboards.
 
-Orders are displayed in real-time on the Kitchen Display System for kitchen staff to prepare.
+**5. Receive alerts and notifications**
 
-**5. Monitor Inventory with Load-cell Sensors**
+* Actor: Kitchen staff
+* Description: Staff receive alerts when there are delays, overloads, or issues requiring attention.
 
-IoT sensors track ingredient levels and notify staff when supplies are low.
+**6. Monitor inventory**
 
-**6. Track food temperature**
+* Actor: Manager
+* Description: Manager monitors inventory levels when supply run lows
 
-Monitor temperature to maintain food safety.
+**7. View Dashboard and Analytics**
 
-**7. Receive Alerts and Notifications**
+* Actor: Manager
+* Description: Manager views real-time dashboard and provides insights into kitchen load, order status, payment status and business analytics.
 
-Staff receive alerts when there are delays, overloads, or issues requiring attention.
+**8. Maintain System**
 
-**8. View Dashboard and Analytics**
-
-Managers access dashboards to monitor order status, kitchen performance, and business analytics.
-
-**9. Maintain System**
-
-System administrators manage configurations, users, and IoT devices
+* Actor: System Admin
+* Description: System admin manages configurations, users, and IoT devices.
 
 ## 5. Functional Requirements
 ### 5.1 Ordering 
