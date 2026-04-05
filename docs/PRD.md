@@ -101,7 +101,6 @@ Monitor temperature to maintain food safety.
 
 Staff receive alerts when there are delays, overloads, or issues requiring attention.
 
-
 **8. View Dashboard and Analytics**
 
 Managers access dashboards to monitor order status, kitchen performance, and business analytics.
@@ -113,7 +112,7 @@ System administrators manage configurations, users, and IoT devices
 ## 5. Functional Requirements
 ### 5.1 Ordering 
 - FR-01: The system shall allow customers to place orders via tablet or QR code.
-- FR-02: The system shall validate order details before confirming the morder.
+- FR-02: The system shall validate order details before confirming the order.
 - FR-03: The system shall categorize orders by type (drink, appetizer, main dish, etc.) and by kitchen station (grill, cold, pastry, etc.).
 - FR-04: The system shall transmit confirmed and categorized orders to the Kitchen Display System (KDS) in real time.
 ### 5.2 Queue Management
@@ -124,7 +123,7 @@ overloaded.
 - FR-08: The system shall update the order status (Pending, Confirmed, Cooking, Ready, Served, Cancelled) in real time on both the KDS and the customer-facing interface.
 ### 5.3 Inventory
 - FR-09: The system shall track ingredient usage using IoT sensors.
-- FR-10: The system shall notify staff when supply runs low
+- FR-10: The system shall notify manager when supply runs low
 - FR-11: The system shall monitor and log temperature readings from connected cold-storage sensors and raise an alert if a reading falls outside the acceptable range.
 ### 5.4 Dashboard
 - FR-12: The system shall display real-time order status accessible to managers, displaying all active orders and their current statuses.
