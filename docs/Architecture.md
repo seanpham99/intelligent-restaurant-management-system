@@ -1,5 +1,87 @@
 # 3. Software Architecture
 ## 3.1 Architecture Characteristics
+### 3.1.1 Architectural Features
+To ensure that the IRMS system meets the success criteria of an IoT-integrated restaurant platform, the following are the architecture characteristics defined based on the Richards & Ford (2020) standard. 
+
+| Characteristics | Justification | NFR Link |
+| :--- | :--- | :--- |
+| **1. Real-Time Processing (Performance)** | Data from IoT sensors, ordering devices, and the kitchen's KDS system needs to be synchronized instantly to avoid service delays. | NFR-01 (Latency is less than or equal to 2 seconds for P95)|
+| **2. Elasticity** | Restaurant order volumes are often cyclical (spiking during lunch/dinner hours). The system needs to automatically scale to handle the load without crashing. | NFR-02 (Processing from 500 TPS to 5,000+ TPS) |
+| **3. Fault Tolerance** | In a high-speed kitchen environment, if a service (e.g., Payment) malfunctions, the Kitchen Display System (KDS) must continue to function normally so that chefs can continue working. | NFR-03, NFR-05 (No SPOF, Failover less than or equal to 30 seconds) |
+| **4. Interoperability** | IRMS must connect with a wide range of diverse IoT devices (smart tablets, load-cell sensors, KDS) from various vendors via standard protocols. | NFR-08 (Using MQTT v3.1.1/v5.0 standard) |
+| **5. Modularity** | Independent business processes (Ordering, Kitchen, Inventory) need to be developed and implemented separately to reduce risks when upgrading the system. | NFR-06 (Changing one module doesn't require redeploying the entire system.) |
+| **6. Security** | Payment card data processing systems (PCI-DSS) and restaurant information require robust protection against cyberattacks. | NFR-04 (TLS 1.3 and AES-256 encryption) |
+| **7. Observability** | With the asynchronous (Event-Driven) communication of IoT, monitoring message flows and detecting errors in real time is essential for quick bug fixes. | NFR-09 (100% event có Correlation ID) |
+
+-----
+
+## 3.1.2 Classification of Implicit & Explicit
+
+According to Neal Ford & Mark Richards (2020), characteristics are categorized based on whether they are explicitly required by the Business or are default technical specifications: 
+
+### Explicit Characteristics (Business-Driven/PRD-driven)
+
+  * **Real-Time Processing**: It's mandatory because the restaurant needs to see the order immediately. 
+  * **Elasticity**: We need support to expand to 500 restaurant branches. 
+  * **Interoperability**: Clearly state this in the requirements for multi-device IoT integration. 
+
+### Implicit Characteristics (Driven by Technical/Architectural Factors)
+
+  * **Fault Tolerance**: The business didn't explicitly require "the system must have a circuit breaker," but the architect knew that network outages were inevitable in restaurants. 
+  * **Modularity & Observability**: It is essential for the student team (and future developers) to be able to maintain and debug the system easily. 
+  * **Security**: This is a default setting to prevent data leaks in the payment system.
+
+-----
+
+## 3.1.3 Architecture Characteristics Star Diagram
+
+![alt text](<Architecture Characteristics Star Diagram - Define Architecture Characteristics-1.png>)
+
+Looking at the chart, we can see an accurate reflection of the fierce competition in the F\&B (Food & Beverage) industry.  During peak hours, it is better to make a small sacrifice regarding the speed of error log retrieval (**Observability**) or accepting the reduction of redundant internal security encryption layers (**Security**).  It is absolutely **not allowed** to fail to allow the kitchen to stop accepting orders (**Fault Tolerance**) or making customers wait more than 2 seconds after pressing the order button (**Real-Time**). 
+
+-----
+
+## 3.1.4 Synergy and Trade-off Analysis
+
+This diagram helps us clearly see the conflicts between characteristics, thereby enabling us to make sound design decisions. 
+
+### 1\. The Synergy: Fault Tolerance and Modularity
+
+  * **Analysis**: To achieve a perfect fault tolerance score (5.0), the system cannot be monolith.  We must have a high degree of modularity (4.0). 
+  * **Architectural Decision**: If the Payment module connected to Momo/VNPay crashes due to a network error, the Kitchen Management module and the Ordering module must continue to function normally via the internal LAN. The modules must be physically deployed independently. 
+
+### 2\. The Trade-off: Real-Time Processing vs. Security
+
+  * **Analysis**: This score difference shows that we prioritize the fastest possible data flow. If every packet communicating between internal services had to be encrypted with AES-256 before decryption, the CPU would be overloaded and break the 2-second time budget (NFR-01). 
+  * **Architectural Decision**: Security will be set up at the **Outermost boundary layer (API Gateway)** via TLS 1.3 and a token mechanism.  Within the internal network between microservices, data will be transmitted using gRPC or unencrypted WebSockets to ensure real-time speeds.
+
+### 3\. Extension Dynamics: Elasticity and Interoperability
+
+  * **Analysis**: The system needs to expand not only in terms of the number of transactions (from 500 to 5000+ TPS) but also in terms of the types of devices (integrating new temperature sensors, new receipt printers). 
+  * **Architectural Decision**: Forced to use a **Message Broker** (such as Kafka or RabbitMQ) and **MQTT protocol**.  MQTT is extremely lightweight, allowing thousands of IoT devices to send data simultaneously without clogging core system bandwidth. 
+
+-----
+
+## 3.1.5 Analysis of the Trade-offs of the Top 3 Leading Characteristics
+
+The three most influential characteristics in our decision to choose a **Hybrid Service-Based + Event-Driven architecture** were: Real-Time Processing, Elasticity, and Fault Tolerance.
+
+**Trade-off 1: Real-Time Processing vs. Security**
+> * To achieve extremely low latency (\< 2s), we use WebSockets and MQTT.
+> * Continuous encryption (TLS 1.3 / AES-256) of every internal stream consumes too much CPU. 
+> * **Decision**: Security is limited to the Gateway level; internal communication uses unencrypted gRPC/Event streams. 
+
+**Trade-off 2: Elasticity vs. Data Consistency**
+> * When load spikes, synchronous writes to a single database for ACID consistency create a bottleneck. 
+> * **Decision**: Accept **"Eventual Consistency"**. The system returns a success result immediately and uses a Message Broker to update the kitchen. This allows scaling to thousands of TPS despite a millisecond delay in kitchen receipt. 
+
+**Trade-off 3: Fault Tolerance vs. Cost & System Complexity**
+> * Ensuring fault tolerance requires complex patterns like Circuit Breaker, Transactional Outbox, and Multi-AZ. 
+> * This increases code complexity and infrastructure costs. 
+> * **Decision**: Accept increased complexity and cost. Higher cloud costs are justified compared to the risk of losing customers if the restaurant closes for even an hour due to failure. 
+
+-----
+
 ## 3.2 Architecture Style Selection
 ### 3.2.1 Candidate Architecture Styles
 There are some architecture styles that are considered for the Intelligent Restaurant Management System (IRMS):
@@ -9,6 +91,8 @@ There are some architecture styles that are considered for the Intelligent Resta
 database
 - **Event-Driven**: system components communicate by producing and responding to events, such as user actions or system state changes. Components are loosely coupled, allowing them to operate independently while reacting to events in real time
 - **Layered (N-Tier)**: The system is divided into layers such as presentation, business logic, persistence and database, each responsible for a certain communication component.
+
+-----
 
 ### 3.2.2 Comparison of architecture styles
 
@@ -36,6 +120,7 @@ The architecture styles are evaluated based on the following criteria:
 - Team Complexity: Development and maintenance complexity for the team.
 - Real-time Support: Ability to process real-time data and events.
 
+-----
 
 ### 3.2.3 Analysis
 _ Monolithic architecture performs poorly in elasticity and fault tolerance. It cannot efficiently handle peak order loads during busy hours, and a failure in one component can affect the entire system. It also lacks support for real-time processing and interoperability with IoT devices.
@@ -48,6 +133,8 @@ _ Microservices architecture provides excellent scalability, fault tolerance, an
 
 _ Service-Based architecture is the most suitable option. It provides sufficient modularity and scalability while maintaining manageable complexity. It also supports interoperability with IoT systems and can be combined with event-driven communication to handle real-time processing effectively.
 
+-----
+
 ### 3.2.4 Selected Architecture Style
 Although Event-Driven architecture achieves the highest score because it supports for real-time processing and IoT integration, but it is not selected as the primary architecture style due to its complexity in system management and debugging. As a result, the IRMS adopts a Service-Based Architecture as the primary architectural style.
 
@@ -58,6 +145,8 @@ Each service is implemented as a modular monolith, allowing easier development, 
 The codebase is managed using a monorepo strategy to ensure consistency and simplify collaboration.
 
 **Conclusion**: Based on comparison, our team has selected a hybrid approach between service-based for overall architecture and Event-Driven mechanisms for real-time IoT communications.
+
+-----
 
 ### 3.2.5 Justification
 The selected architecture satisfies the key architectural characteristics defined in Section 3.1:
@@ -71,57 +160,13 @@ The selected architecture satisfies the key architectural characteristics define
 - **Observability**: The architecture supports monitoring and logging across services, enabling visibility into system health and order flow.
 
 This hybrid approach ensures a balance between performance, scalability, and implementation feasibility.
-### 3.2.6 Architecture Decison Record (ADR)
-### ADR-001: Hybrid approach 
-**Status:** Accepted
-**Date:** 2025-04-08
+### 3.2.6 Architecture Decison Summary
+### ADR-001: Adopt Service-Based Architecture with Event-Driven Communication
+The architectural decision for IRMS is to adopt a Service-Based Architecture combined with Event-Driven communication mechanism.
 
-#### Context
-The IRMS IRMS must support real-time order processing, IoT device integration (e.g., smart menus, kitchen display systems, load-cell sensors, temperature sensors), and multiple business functions such as ordering, kitchen coordination, inventory tracking, notifications, and dashboards.
-The system is expected to handle peak loads during busy hours, provide fast updates to dashboards, and ensure that critical components such as the Kitchen Display System remain operational even if other parts of the system fail.
-At the same time, the system is developed by a student team, requiring a balance between scalability and implementation complexity.
+The detailed architectural decision is documented in detail in ADR-001 (see Appendix A).
 
-
-#### Decision
-- The system adopts a Service-Based Architecture as the overall architectural style.
-- To support real-time processing and IoT integration, the system incorporates Event-Driven communication mechanisms between services and IoT components.
-- Each service is implemented as a modular monolith.
-- Use monorepo to manage codebase.
-
-#### Consequences
-**Positive:** 
-- Improve modularity and separation of concerns  
-- Support for real-time updates and IoT integration  
-- Lower complexity compared to full microservices  
-- Easier development and debugging for the team  
-- Scalable at service level  
-
-**Negative:**
-- Less scalable than microservices
-- Event-driven is difficult to debug and trace
-- Potential coupling between services if not well designed
-- Require event coordination and monitoring
-
-**Risks:**
-- **Risk: Event processing latency or message loss**  
-  IoT events, such as order updates, sensor data may be delayed or lost due to network or messaging issues.  
-  → *Mitigation:* Implement retry mechanisms, message acknowledgment, and persistent queues.
-
-- **Risk: Difficulty in debugging asynchronous flows**  
-  Event-driven communication makes it harder to trace down problems.  
-  → *Mitigation:* Use centralized logging and monitoring tools.
-
-- **Risk: Performance bottlenecks during peak hours**  
-  High order volume may overload certain services, such as Order, Inventory, Kitchen and Dashboard Service.  
-  → *Mitigation:* Apply load balancing and scale critical services.
-
-- **Risk: Service coupling through poorly designed events**  
-  Poorly defined event contracts may lead to tight coupling between services.  
-  → *Mitigation:* Define clear event schemas and versioning strategies.
-
-- **Risk: Single point of failure in shared infrastructure**  
-  Message brokers or databases may become bottlenecks.  
-  → *Mitigation:* Use redundancy and failover mechanisms.
+-----
 
 ## 3.3 Module View
 ### 3.3.1 Overview
