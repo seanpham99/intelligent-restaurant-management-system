@@ -283,6 +283,169 @@ The following table documents all **«uses»** dependencies — relationships wh
 
 4. **Customer Ordering as the system entry point.** Module is the starting point of every customer-initiated workflow. Its dependency on both and reflects its role as the coordinator between the customer-facing interaction layer and the kitchen-facing execution layer.
 
+---
+
+## 3.4 Component-and-Connector View (C&C)
+### 3.4.1 Overview
+The Component-and-Conector (C&C) view shows elements that has some runtime presence, such as processes, objects, clients, servers, data stores and the communication patterns between clients, services, Iot devices and infrastuctures components.
+
+This view is vital for IRMS as the system must support both synchronous and asynchronous event-driven processing for IoT data, kitchen operations, and staff and manager notifications.
+
+---
+
+### 3.4.2 C&C Components
+
+| Component | Main responsibility | 
+| :--- | :--- |
+| `customerTablet : ClientApp` | Allow customers to place orders through QR menus or tablet |
+| `apiGateway : APIGateway` | Entry point for all external client requests |
+| `orderService : OrderService` | Process and validate orders |
+| `eventBus : MessageBroker` | Handle asynchronous communication using publish-subscribe pattern |
+| `kdsService` : `KDSService` | Update KDS with detailed order information |
+| `staffDashboard` : `StaffDashboard` | Display real-time operational data |
+| `managerDashboard` : `ManagerDashboard` | Display analytics, alerts, order status and kitchen load |
+| `loadCellSensor` : `LoadCellSensor` | Iot device tracks ingredient levels |
+| `iotGateway` : `IotGateway` | Receive and forward sensor data |
+| `sensorCollector` : `SensorCollectorService` | Process raw sensor data |
+| `stockAlertService` : `StockAlertService` | Detect the low level of ingredients and send alert |
+| `staffNotificationService` : `StaffNotificationService` | Send notifications and alerts to staff | 
+| `kitchenDisplay` : `KitchenDisplay` | Display orders and notiofications in the kitchen |
+| `postgreDb` : `PostgreSQL` | Store data |
+
+---
+
+### 3.4.3 Connector and Communication Types
+IRMS uses two main types of connectors: Synchronous and Asynchronous communication.
+#### 1. Synchronous Communication (HTTP/ REST)
+Synchronous connectors are utilized for interactions where an immediate acknowledgement or data response.
+
+- `customerTablet` → `apiGateway`: Submit orders and receive real-time validation.
+- `managerDashboard` → `apiGateway`: Fetch analytics and manage menu configurations.
+- `apiGateway` → `orderService`: Forward high-priority business logic requests.
+
+**Role:**
+- Client → Request Handler: Clients initiates requests, while backend provides Request Handlers to process and respond to these calls.
+- Caller → Service Provider: The apiGateway serves as the Caller, orchestrating requests to the orderService, which acts as the Functional Service Provider.
+
+#### 2. Asynchronous Communication (Event-driven/ MQTT)
+Asynchronous connectors decouple the system components, allowing for background to process and handle Iot communication:
+
+- `orderService` → `eventBus` : The `orderService` publishes a 'new order' event to `eventBus`.
+- `eventBus` → `kdsService` : The `kdsService` subscribed to this topic, it updates instantly the Kitchen's view.
+- `loadCellSensor`  →  `iotGateway` → `eventBus` : Data from `loadCellSensor` is routed through the `iotGateway` to the `eventBus`.
+- `eventBus` → `sensorColector`
+- `sensorCollector` → `stockAlertService`
+- `stockAlertService` → `eventBus`
+- `eventBus` → `staffNotificationService`
+- `eventBus` → `kdsService`
+  - The sensorCollector processes this stream, enabling the `stockAlertService` to trigger notifications for the `staffNotificationService`
+without blocking the main order flow.
+
+**Role:**
+- Publisher → EventBus → Sunscriber: Sensors or Services act as Publishers, broadcasting messages to specific Topics. The eventBus manages the routing to Subscribers, ensuring resilient delivery even during network fluctuations or high traffic spikes.
+
+#### 4. Database Access
+- Communication between functional services and postgreDb through synchronous database connections.
+- Role: Reader/ Writer
+
+--- 
+
+### 3.4.4 Key Runtime flow
+#### 1. Order Flow
+
+Customer tablet → API Gateway → Order Service → Event Bus → KDS Service → Staff Dashboard
+
+Description:
+- Customers submit an order through tablet or QR menus
+- API Gateway receives the request and delivers it to Order Service
+- Order Service process the order and publishes an event to the Event Bus
+- The KDS Service subscribes to the event and updates the kitchen display
+- Staff Dashboard updates order status for staff monitoring.
+
+
+#### 2. Inventory Flow
+
+Load-cell Sensor → IoT Gateway → Sensor Collector → Stock Alert Service → Manager Dashboard
+
+Description:
+- Load-cell Sensors send ingredient level data.
+- The IoT Gateway receives and forwards this data.
+- The Sensor Collector processes raw data.
+- The Stock Alert Service detects the low level of inventory
+- The Manager Dashboard displays alerts and inventory status.
+
+#### 3. Notification Flow
+
+Event Bus → Staff Notification Service → Kitchen Display
+
+Description:
+- Events such as delays, overload, or alerts are published to the Event Bus.
+- The Staff Notification Service manages these events.
+- Notifications are sent to the Kitchen Display to process
+
+---
+
+### 3.4.5 Identify Ports and Roles
+Component communicate by exposing ports that fulfill designated roles within each connector:
+
+| Component | Port | Role |
+| :--- | :--- | :--- |
+| apiGateway | REST API | Request Handler |
+| orderService | service API | provider |
+| orderService | event-out | publisher |
+| eventBus | MQTT topic | broker |
+| kdsService | event-in | subscriber |
+| sensorCollector | event-in | subscriber |
+| stockAlertService | event in/ out | subscriber/ publisher |
+| staffNotificationService | event-in | subscriber | 
+| postgreDb | DB Connection | storage provider | 
+
+---
+
+### 3.4.6 C&C Diagram
+
+
+---
+
+### 3.4.7 Consider Performance
+The C&C view supports the evaluation of runtime quality attributes:
+
+- Responsiveness: when customer submit order, the systems will receive an immediate HTTP response from API Gateway
+- Scalability: By adopting asynchronous messaging, we can decouple producers from consumersto scale independently and more efficiently based on demand.
+- Reliability: By integrating a message broker, we've successfully minimized the direct dependencies between internal services. This setup ensures that event delivery remains resilient, as messages can be queued and retried even if a specific service temporarily goes offline.
+- Maintainability: Our architecture clearly divides the gateway, backend services, broker, and display clients into distinct layers. This separation makes it much easier to trace responsibilities and debug issues, as each component has a well-defined role within the restaurant system.
+- IoT support: We chose MQTT specifically for its efficiency in handling lightweight sensor data. It allows our IoT devices to publish events frequently—such as table occupancy or temperature updates—without putting a heavy strain on the network or hardware resources.
+
+---
+
+## 3.5 Allocation View
+### 3.5.1 Overview
+The Allocation View (or Deployment View) illustrates how the software components of the IRMS system are packaged and deployed in a real-world environment. According to the latest design decisions, the system is streamlined and centrally deployed on a Docker platform, making it easy to manage, install, and optimize resources for restaurant environments without the complexity of large-scale orchestration systems.
+![alt text](<Technology choices noted on the diagram.png>)
+
+---
+
+### 3.5.2 Deployment Components
+The system is divided into two main areas: the physical environment (containing IoT devices) and the Docker environment (containing all the system's logic and data).
+
+| **Deployment Zone**   | **Ingredients as requested**           | **Mapping to the actual Docker architecture**                                                                                                                                                                                                           | **Protocol**     |
+| :-------------------: | :------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :--------------: |
+| **Customer Zone**     | Smart tablets, QR code scanners        | Customers use mobile devices to access the container. **Web UI** Use your browser to view the menu and place your order.                                                                                                                                | HTTP/HTTPS       |
+| **Kitchen Zone**      | KDS displays, staff alert devices      | Kitchen access screen **Web UI** To display the queue. Alarm devices receive signals from the system via API Gateway or WebSockets.                                                                                                                     | HTTP, WebSockets |
+| **Sensor Layer**      | Load-cell sensors, temperature sensors | These are **Sensors** The physicists, who continuously measure the weight and temperature of the materials, act as publishers, pushing the data up to the system.                                                                                       | MQTT             |
+| **Edge/Local Server** | IoT Gateway, local MQTT broker         | Handled by containers **Mosquitto** It acts as an MQTT Broker. It receives all high-speed IoT data from the Sensor Layer before sending it to the Services for processing.                                                                              | MQTT, TCP        |
+| **Cloud/Backend**     | Microservices, Event Bus, Databases    | Includes a core container processing unit: **API Gateway** Request navigation. **Services** Contains business logic. **Valkey**: Acts as an in-memory cache and Pub/Sub mechanism (replacing Kafka/Event Bus). **PostgreSQL**: Persistent data storage. | REST, TCP/IP     |
+| **Manager Zone**      | Dashboard web app, analytics           | Manage personal PC/Laptop access **Web UI** (via API Gateway) to view sales, inventory, and kitchen performance reports.                                                                                                                                | HTTPS / REST     |
+
+--- 
+
+### 3.5.3 Technology Stack Decisions
+**Containerization Technology (Docker):** The entire backend, UI, database, and broker are packaged into containers running in a Docker environment (managed via Docker Compose). This decision makes it easy to deploy the entire system to a single server (such as a powerful local server in a restaurant or a cloud VM) while ensuring isolation between services.
+
+**Replacing Caching/Pub-Sub Systems with Valkey:** Valkey is used to optimize performance and reduce the load on the database. Fast-access data (such as temporary menus, user sessions) or events requiring internal processing between services will pass through it.
+
+**IoT Communication via Mosquitto:** Eclipse Mosquitto is chosen as a robust bridge (MQTT broker) between a range of physical sensors and the services block. The MQTT protocol ensures minimal bandwidth usage, suitable for IoT environments.
+
 
 
 
