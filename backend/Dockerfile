@@ -19,7 +19,7 @@ EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
 # ---- Menu service ----
-FROM base AS menu-runner
+FROM base AS menu-service
 
 COPY ./menu-service /app
 

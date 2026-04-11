@@ -19,6 +19,10 @@ x-db-envs: &db-envs
   DB_PASSWORD: ${DB_PASSWORD}
   DB_NAME: postgres
 
+x-valkey-envs: &valkey-envs
+  CACHE_HOST: irms-valkey
+  CACHE_PORT: 6379
+
 x-tz: &tz
   TZ: Asia/Ho_Chi_Minh
 
@@ -34,14 +38,44 @@ services:
     networks:
       - api-internal
     <<: [ *logging, *limits ]
+  
+  valkey:
+    image: valkey/valkey:8.1.6
+    container_name: irms-valkey
+    expose:
+      - 6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 30s
+      retries: 50
+      start_period: 30s
+    # restart: unless-stopped
+    networks:
+      - api-internal
+    <<: [ *logging, *limits ]
+  
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: irms-mqtt
+    volumes:
+      # - ./data/mqtt/config:/mosquitto/config
+      - ./data/mqtt/data:/mosquitto/data
+      - ./data/mqtt/log:/mosquitto/log
+    networks:
+      - api-internal
+    <<: [ *logging, *limits ]
 
   gateway:
-    image: local/irms-api-gateway
+    image: local/irms-gateway
     build:
       context: .
       dockerfile: Dockerfile
       target: gateway
-    container_name: irms-api-gateway
+    container_name: irms-gateway
+    volumes:
+      - ./gateway:/app
+      - ./shared:/shared
     environment:
       <<: [ *tz, *db-envs ]
     ports:
@@ -55,15 +89,17 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: menu-runner
+      target: menu-service
     container_name: irms-menu-service
-    # volumes:
-    #   - ./menu-service/app:/app
-    #   - ./shares:/app/shares
+    volumes:
+      - ./menu-service:/app
+      - ./shared:/shared
     environment:
-      <<: [*tz, *db-envs]
+      <<: [*tz, *db-envs, *valkey-envs]
     ports:
       - 8001:8000
+    networks:
+      - api-internal
     <<: [ *logging, *limits ]
 
   pgadmin:
