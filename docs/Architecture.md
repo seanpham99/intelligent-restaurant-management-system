@@ -289,33 +289,33 @@ The following table documents all **«uses»** dependencies — relationships wh
 ### 3.4.1 Overview
 The Component-and-Conector (C&C) view shows elements that has some runtime presence, such as processes, objects, clients, servers, data stores and the communication patterns between clients, services, Iot devices and infrastuctures components.
 
-This view is vital for IRMS as the system must support both synchronous and asynchronous event-driven processing for IoT data, kitchen operations, and staff and manager notifications.
+This view is vital for IRMS as the system must support both synchronous (HTTP/ REST) and asynchronous (event-driven/ MQTT) processing for IoT data, kitchen operations, and staff and manager notifications.
 
 ---
 
 ### 3.4.2 C&C Components
 
-| Component | Main responsibility | 
-| :--- | :--- |
-| `customerTablet : ClientApp` | Allow customers to place orders through QR menus or tablet |
-| `apiGateway : APIGateway` | Entry point for all external client requests |
-| `orderService : OrderService` | Process and validate orders |
-| `eventBus : MessageBroker` | Handle asynchronous communication using publish-subscribe pattern |
-| `kdsService` : `KDSService` | Update KDS with detailed order information |
-| `staffDashboard` : `StaffDashboard` | Display real-time operational data |
-| `managerDashboard` : `ManagerDashboard` | Display analytics, alerts, order status and kitchen load |
-| `loadCellSensor` : `LoadCellSensor` | Iot device tracks ingredient levels |
-| `iotGateway` : `IotGateway` | Receive and forward sensor data |
-| `sensorCollector` : `SensorCollectorService` | Process raw sensor data |
-| `stockAlertService` : `StockAlertService` | Detect the low level of ingredients and send alert |
-| `staffNotificationService` : `StaffNotificationService` | Send notifications and alerts to staff | 
-| `kitchenDisplay` : `KitchenDisplay` | Display orders and notiofications in the kitchen |
-| `postgreDb` : `PostgreSQL` | Store data |
+| Component | Module | Main responsibility | Intances |
+| :--- | :--- | :--- | :--- |
+| `customerTablet : ClientApp` | Client Module | Allow customers to place orders through QR menus or tablet | 1..n |
+| `apiGateway : APIGateway` | API Gateway Module | Entry point for all external client requests | 1..2 |
+| `orderService : OrderService` | Ordering Module | Process and validate orders | 1..2 |
+| `eventBus : MessageBroker` | Messaging Module | Handle asynchronous communication using publish-subscribe pattern | 1 |
+| `kdsService` : `KDSService` | Kitchen Module | Update KDS with detailed order information | 1 |
+| `staffDashboard` : `StaffDashboard` | UI Model |Display real-time operational data | 1 |
+| `managerDashboard` : `ManagerDashboard` | UI Model | Display analytics, alerts, order status and kitchen load | 1 |
+| `loadCellSensor` : `LoadCellSensor` | Iot Module | Iot device tracks ingredient levels | 1..n |
+| `iotGateway` : `IotGateway` | Iot Module | Receive and forward sensor data | 1 |
+| `sensorCollector` : `SensorCollectorService` | Inventory Module | Process raw sensor data | 1 |
+| `stockAlertService` : `StockAlertService` | Inventory Module | Detect the low level of ingredients and send alert | 1 |
+| `staffNotificationService` : `StaffNotificationService` | Notification Module | Send notifications and alerts to staff | 1 | 
+| `kitchenDisplay` : `KitchenDisplay` | Kitchen Module | Display orders and notiofications in the kitchen | 1 |
+| `postgreDb` : `PostgreSQL` | Data Module | Store data | 1 |
 
 ---
 
 ### 3.4.3 Connector and Communication Types
-IRMS uses two main types of connectors: Synchronous and Asynchronous communication.
+IRMS uses three main types of connectors: Synchronous, Asynchronous communication and database access.
 #### 1. Synchronous Communication (HTTP/ REST)
 Synchronous connectors are utilized for interactions where an immediate acknowledgement or data response.
 
@@ -346,6 +346,8 @@ without blocking the main order flow.
 
 #### 4. Database Access
 - Communication between functional services and postgreDb through synchronous database connections.
+- orderService ↔ postgreDb
+- sensorCollector ↔ postgreDb
 - Role: Reader/ Writer
 
 --- 
@@ -388,22 +390,22 @@ Description:
 ### 3.4.5 Identify Ports and Roles
 Component communicate by exposing ports that fulfill designated roles within each connector:
 
-| Component | Port | Role |
-| :--- | :--- | :--- |
-| apiGateway | REST API | Request Handler |
-| orderService | service API | provider |
-| orderService | event-out | publisher |
-| eventBus | MQTT topic | broker |
-| kdsService | event-in | subscriber |
-| sensorCollector | event-in | subscriber |
-| stockAlertService | event in/ out | subscriber/ publisher |
-| staffNotificationService | event-in | subscriber | 
-| postgreDb | DB Connection | storage provider | 
+| Component | Port | Direction | Role |
+| :--- | :--- | :--- | :--- |
+| apiGateway | REST API | in | Request Handler |
+| orderService | service API | in | provider |
+| orderService | event-out | out | publisher |
+| eventBus | MQTT topic | in/ out | broker |
+| kdsService | event-in | in | subscriber |
+| sensorCollector | event-in | in | subscriber |
+| stockAlertService | event in/ out | in/out | subscriber/ publisher |
+| staffNotificationService | event-in | in | subscriber | 
+| postgreDb | DB Connection | in/out | storage provider | 
 
 ---
 
 ### 3.4.6 C&C Diagram
-
+![alt text](<"C&C view.png">)
 
 ---
 
