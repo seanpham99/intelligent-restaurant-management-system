@@ -15,7 +15,7 @@ router = APIRouter(
 )
 
 # The internal URL of your Order Service (accessible via your private network)
-ORDER_SERVICE_HOST = ""
+ORDER_SERVICE_HOST = "irms-order-service"
 ORDER_SERVICE_WS_URL = f"ws://{ORDER_SERVICE_HOST}:8000"
 ORDER_SERVICE_URL = f"http://{ORDER_SERVICE_HOST}:8000"
 
