@@ -448,6 +448,26 @@ The system is divided into two main areas: the physical environment (containing 
 
 **IoT Communication via Mosquitto:** Eclipse Mosquitto is chosen as a robust bridge (MQTT broker) between a range of physical sensors and the services block. The MQTT protocol ensures minimal bandwidth usage, suitable for IoT environments.
 
+---
+
+## 3.6 Architecture Decisions (ADRs)
+The architectural design of IRMS is documented decisions in the repository under `docs/adr/`. These ADRs capture design choices, context and consequences.
+ADRs are documented specifically in Appendix A. Each ADR follow a standard format including Title, Context, Decision and Consequences.
+
+A summary of key decisions is presented as the below:
+- ADR-001: Adopt Service-Based Architecture with Event-Driven Communication
+- ADR-002:  Use MQTT as the IoT Communication Protocol
+- ADR-003: Use Eclipse Mosquitto as the Message Broker.
+- ADR-004: Use API Gateway Pattern for External Client Access
+- ADR-005: Use Docker for deployment.
+
+
+
+
+
+
+
+
 
 
 
