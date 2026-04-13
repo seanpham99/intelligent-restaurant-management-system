@@ -28,20 +28,20 @@ At the same time, the system is developed by a student team, requiring a balance
 - Require event coordination and monitoring
 
 **Risks:**
-- **Risk: Event processing latency or message loss**  
-  IoT events, such as order updates, sensor data may be delayed or lost due to network or messaging issues.  
+- **Event processing latency or message loss**
+IoT events, such as order updates, sensor data may be delayed or lost due to network or messaging issues.  
 
-- **Risk: Difficulty in debugging asynchronous flows**  
-  Event-driven communication makes it harder to trace down problems.  
+- **Difficulty in debugging asynchronous flows**  
+Event-driven communication makes it harder to trace down problems.  
 
-- **Risk: Performance bottlenecks during peak hours**  
-  High order volume may overload certain services, such as Order, Inventory, Kitchen and Dashboard Service.  
+- **Performance bottlenecks during peak hours**  
+High order volume may overload certain services, such as Order, Inventory, Kitchen and Dashboard Service.  
 
-- **Risk: Service coupling through poorly designed events**  
-  Poorly defined event contracts may lead to tight coupling between services.  
+- **Service coupling through poorly designed events**  
+Poorly defined event contracts may lead to tight coupling between services.  
 
-- **Risk: Single point of failure in shared infrastructure**  
-  Message brokers or databases may become bottlenecks.
+- **Single point of failure in shared infrastructure**  
+Message brokers or databases may become bottlenecks.
 
 
 
