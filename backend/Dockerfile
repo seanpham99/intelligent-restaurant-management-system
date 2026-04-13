@@ -27,3 +27,8 @@ COPY ./menu-service /app
 FROM base AS gateway
 
 COPY ./gateway /app
+
+# ---- Order service ----
+FROM base AS order-service
+
+COPY ./order-service /app

@@ -10,3 +10,18 @@ class ItemResponse(BaseDTO):
     description: str
     price: float
     type_name: str
+    image_base64: str
+
+class PortionResponse(BaseDTO):
+    remaining_portions: int
+
+class OrderInput(BaseDTO):
+    item_id: int
+    table_id: int
+    amount: float  
+
+class OrderResponse(OrderInput):
+    id: Optional[str] = None
+
+class OrderIdResponse(BaseDTO):
+    id: str

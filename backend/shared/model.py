@@ -66,6 +66,7 @@ class MenuItem(Base):
     name = Column(String)
     description = Column(Text)
     price = Column(Float)
+    image_base64 = Column(Text)
     
     item_type = relationship("ItemType")
 
@@ -82,7 +83,7 @@ class RestaurantTable(Base):
 
 class Bill(Base):
     __tablename__ = 'bill'
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(Text, primary_key=True)
     payment_method_id = Column(BigInteger, ForeignKey('payment_method.id'), nullable=False)
     delivery_service_id = Column(BigInteger, ForeignKey('delivery_service.id'), nullable=False)
     customer_id = Column(BigInteger, ForeignKey('customer.id'), nullable=False)
@@ -95,11 +96,12 @@ class Bill(Base):
 
 class Order(Base):
     __tablename__ = 'order'
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    bill_id = Column(BigInteger, ForeignKey('bill.id'), nullable=False)
+    id = Column(Text, primary_key=True)
+    bill_id = Column(Text, ForeignKey('bill.id'), nullable=False)
     table_id = Column(BigInteger, ForeignKey('restaurant_table.id'), nullable=False)
     status_id = Column(BigInteger, ForeignKey('order_status.id'), nullable=False)
     created_at = Column(DateTime(timezone=True), default=func.now())
+    track_id = Column(Text)
 
     bill = relationship("Bill")
     table = relationship("RestaurantTable")
@@ -109,7 +111,7 @@ class Order(Base):
 
 class OrderItem(Base):
     __tablename__ = 'order_item'
-    order_id = Column(BigInteger, ForeignKey('order.id'), primary_key=True)
+    order_id = Column(Text, ForeignKey('order.id'), primary_key=True)
     item_id = Column(BigInteger, ForeignKey('menu_item.id'), primary_key=True)
     amount = Column(Float)
     customer_note = Column(Text)

@@ -4,3 +4,5 @@ redis>=7.4.0
 sqlalchemy>=2.0.49
 uvicorn>=0.43.0
 httpx
+websockets
+aiomqtt

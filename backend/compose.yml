@@ -23,6 +23,10 @@ x-valkey-envs: &valkey-envs
   CACHE_HOST: irms-valkey
   CACHE_PORT: 6379
 
+x-mqtt-envs: &mqtt-envs
+  MQTT_HOST: irms-mqtt
+  MQTT_PORT: 1883
+
 x-tz: &tz
   TZ: Asia/Ho_Chi_Minh
 
@@ -98,6 +102,24 @@ services:
       <<: [*tz, *db-envs, *valkey-envs]
     ports:
       - 8001:8000
+    networks:
+      - api-internal
+    <<: [ *logging, *limits ]
+
+  order-service:
+    image: local/irms-order-service
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: order-service
+    container_name: irms-order-service
+    volumes:
+      - ./order-service:/app
+      - ./shared:/shared
+    environment:
+      <<: [*tz, *db-envs, *mqtt-envs]
+    ports:
+      - 8002:8000
     networks:
       - api-internal
     <<: [ *logging, *limits ]

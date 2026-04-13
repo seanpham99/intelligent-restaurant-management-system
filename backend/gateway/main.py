@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import menu_service
+from routers import menu_service, order_service
 from httpx_client import init_httpx_client, close_httpx_client
 from logger import logger
 
@@ -24,6 +24,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 app.include_router(menu_service.router)
+app.include_router(order_service.router)
 '''
 origins = [
     "http://192.168.1.96:*",
