@@ -95,13 +95,13 @@ curl --request POST \
 ]
 ```
 
-### Get order status
+### Get order's status
 - Description: Open a websocket to the server to update the order's status.
 - Endpoint: `/order/status`.
 - Method: Websocket.
 - Steps to use this endpoint:
     1. Open a normal websocket to the server via, for example, `ws://localhost:8000/order/status`.
-    2. Send a json object as message: {"order_id": "<id obtained from the /order/create endpoint>"}
+    2. Send a json object as message: `{"order_id": "<id obtained from the /order/create endpoint>"}`
     3. The websocket should receive updating messages of the following format:
     `{"status": int, "description": str}`
     If the `status == 3`, that means the websocket ends and the order is completed.
