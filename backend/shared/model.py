@@ -101,7 +101,6 @@ class Order(Base):
     table_id = Column(BigInteger, ForeignKey('restaurant_table.id'), nullable=False)
     status_id = Column(BigInteger, ForeignKey('order_status.id'), nullable=False)
     created_at = Column(DateTime(timezone=True), default=func.now())
-    track_id = Column(Text)
 
     bill = relationship("Bill")
     table = relationship("RestaurantTable")
