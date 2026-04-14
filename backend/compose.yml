@@ -40,7 +40,7 @@ services:
     volumes:
       - ./data/db:/var/lib/postgresql/data
     networks:
-      - api-internal
+      - backend-internal
     <<: [ *logging, *limits ]
   
   valkey:
@@ -56,7 +56,7 @@ services:
       start_period: 30s
     # restart: unless-stopped
     networks:
-      - api-internal
+      - backend-internal
     <<: [ *logging, *limits ]
   
   mqtt:
@@ -67,7 +67,7 @@ services:
       - ./data/mqtt/data:/mosquitto/data
       - ./data/mqtt/log:/mosquitto/log
     networks:
-      - api-internal
+      - backend-internal
     <<: [ *logging, *limits ]
 
   gateway:
@@ -77,15 +77,16 @@ services:
       dockerfile: Dockerfile
       target: gateway
     container_name: irms-gateway
-    volumes:
-      - ./gateway:/app
-      - ./shared:/shared
+    #volumes:
+    #  - ./gateway:/app
+    #  - ./shared:/shared
     environment:
       <<: [ *tz, *db-envs ]
     ports:
       - 8000:8000
     networks:
-      - api-internal
+      - backend-internal
+      - frontend
     <<: [ *logging, *limits ]
   
   menu-service:
@@ -95,15 +96,15 @@ services:
       dockerfile: Dockerfile
       target: menu-service
     container_name: irms-menu-service
-    volumes:
-      - ./menu-service:/app
-      - ./shared:/shared
+    #volumes:
+    #  - ./menu-service:/app
+    #  - ./shared:/shared
     environment:
       <<: [*tz, *db-envs, *valkey-envs]
-    ports:
-      - 8001:8000
+    #ports:
+    #  - 8001:8000
     networks:
-      - api-internal
+      - backend-internal
     <<: [ *logging, *limits ]
 
   order-service:
@@ -113,15 +114,15 @@ services:
       dockerfile: Dockerfile
       target: order-service
     container_name: irms-order-service
-    volumes:
-      - ./order-service:/app
-      - ./shared:/shared
+    #volumes:
+    #  - ./order-service:/app
+    #  - ./shared:/shared
     environment:
       <<: [*tz, *db-envs, *mqtt-envs]
-    ports:
-      - 8002:8000
+    #ports:
+    #  - 8002:8000
     networks:
-      - api-internal
+      - backend-internal
     <<: [ *logging, *limits ]
 
   pgadmin:
@@ -139,10 +140,14 @@ services:
     ports:
       - 8080:80
     networks:
-      - api-internal
+      - backend-internal
     <<: [ *logging, *limits ]
 
 
 networks:
-  api-internal:
-    name: api-internal
+  backend-internal:
+    name: irms-backend-internal
+  frontend:
+    name: irms-frontend
+    external: true
+  
