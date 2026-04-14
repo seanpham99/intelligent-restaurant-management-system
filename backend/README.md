@@ -93,6 +93,8 @@ curl --request POST \
     "id": "15bdafa4-0203-4664-a9ab-2570ba1e25f3"
   }
 ]
+
+Notes: about the `table_id` field, just keep it at 0 (Không xác định) for simplicity.
 ```
 
 ### Get order's status
