@@ -1,8 +1,10 @@
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, Session
+from contextlib import contextmanager
 from typing import Generator
 from urllib.parse import quote_plus
 import os
+
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker, Session
 
 from logger import logger
 
@@ -40,3 +42,7 @@ def verify_connection():
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
     return True
+
+@contextmanager
+def get_db_context():
+    return get_db()
