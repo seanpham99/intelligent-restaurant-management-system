@@ -79,6 +79,15 @@ class OrderInsertHandler(MQTTWokerHander):
             raise e
         return order_item
     
+    def update_order_status(self, order, status_id):
+        order.status_id = status_id
+        try:
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            raise e
+        return order
+    
     def mock_update_ingredient_amount(self, order_info):
         results = []
         try:
@@ -116,18 +125,22 @@ class OrderInsertHandler(MQTTWokerHander):
         for order_info in self.payload:
             topic = f'order/status/{order_info['id']}'
             # topic = f'order/status/1'
+            order = self.create_order(bill.id, order_info)
+            self.update_order_status(order, ORDER_STATUS.IN_QUEUE.value)
             publish(self.mqtt, topic, {"status": ORDER_STATUS.IN_QUEUE.value, "description": ORDER_STATUS.IN_QUEUE.name}, self.loop)
             sleep(MOCK_PROCESSING_TIME)
 
-            order = self.create_order(bill.id, order_info)
+            
+            self.update_order_status(order, ORDER_STATUS.PROCESSING.value)
             publish(self.mqtt, topic, {"status": ORDER_STATUS.PROCESSING.value, "description": ORDER_STATUS.PROCESSING.name}, self.loop)
             
             sleep(MOCK_PROCESSING_TIME)
             order_item = self.create_order_item(order_info)
             results = self.mock_update_ingredient_amount(order_info)
             logger.info(f'Mock update ingredient amount: {results}')
-
-        publish(self.mqtt, topic, {"status": ORDER_STATUS.DONE.value, "description": ORDER_STATUS.DONE.name}, self.loop)
+        
+            self.update_order_status(order, ORDER_STATUS.DONE.value)
+            publish(self.mqtt, topic, {"status": ORDER_STATUS.DONE.value, "description": ORDER_STATUS.DONE.name}, self.loop)
 
         
 
