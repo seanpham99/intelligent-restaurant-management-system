@@ -8,6 +8,7 @@ import json
 from dto import OrderInput, OrderResponse
 from logger import logger
 from mqtt_queue import get_global_mqtt, create_standalone_mqtt
+from const import ORDER_STATUS
 
 router = APIRouter(
     prefix="/order",
@@ -125,7 +126,7 @@ async def order_status_websocket(websocket: WebSocket):
                 payload = json.loads(message.payload.decode())
                 await websocket.send_json(payload)
 
-                if payload.get("status") == 3:
+                if payload.get("status") == ORDER_STATUS.DONE.value:
                     break
 
     except WebSocketDisconnect:

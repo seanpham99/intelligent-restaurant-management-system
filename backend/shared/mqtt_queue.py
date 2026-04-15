@@ -4,6 +4,7 @@ import asyncio
 from typing import AsyncGenerator, Optional
 from logger import logger
 import uuid
+import json
 
 MQTT_HOST = os.getenv("MQTT_HOST", "localhost")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
@@ -68,4 +69,10 @@ def create_standalone_mqtt(prefix: str = "ws_client") -> aiomqtt.Client:
         username=MQTT_USER,
         password=MQTT_PASSWORD,
         identifier=unique_id
+    )
+
+def publish(client: aiomqtt.Client, topic: str, payload: dict, loop):
+    asyncio.run_coroutine_threadsafe(
+        client.publish(topic, payload=json.dumps(payload), qos=1), 
+        loop
     )
