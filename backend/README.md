@@ -107,3 +107,5 @@ Notes: about the `table_id` field, just keep it at 0 (Không xác định) for s
     3. The websocket should receive updating messages of the following format:
     `{"status": int, "description": str}`
     If the `status == 3`, that means the websocket ends and the order is completed.
+- Example websocket messages:
+![Example websocket messages](images/image.png)
