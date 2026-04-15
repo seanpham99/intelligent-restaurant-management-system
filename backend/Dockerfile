@@ -32,3 +32,10 @@ COPY ./gateway /app
 FROM base AS order-service
 
 COPY ./order-service /app
+
+# ---- Background worker ----
+FROM base AS background-worker
+
+COPY ./background-worker /app
+
+CMD ["python", "main.py"]

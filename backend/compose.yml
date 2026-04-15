@@ -124,6 +124,22 @@ services:
     networks:
       - backend-internal
     <<: [ *logging, *limits ]
+  
+  background-worker:
+    image: local/irms-background-worker
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: background-worker
+    container_name: irms-background-worker
+    #volumes:
+    #  - ./order-service:/app
+    #  - ./shared:/shared
+    environment:
+      <<: [*tz, *db-envs, *mqtt-envs]
+    networks:
+      - backend-internal
+    <<: [ *logging, *limits ]
 
   pgadmin:
     image: dpage/pgadmin4:8.4
