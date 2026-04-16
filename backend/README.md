@@ -135,3 +135,8 @@ Notes: about the `table_id` field, just keep it at 0 (Không xác định) for s
 
 ## Test Command: 
 python3 -m pytest backend/tests --cov=routers.order --cov=httpx_client --cov=mqtt_queue --cov=model --cov-report=term-missing
+
+## pytest.ini
+[pytest]
+testpaths = tests
+asyncio_mode = auto
