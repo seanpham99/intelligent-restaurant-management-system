@@ -1,0 +1,169 @@
+x-logging: &logging
+  logging:
+    driver: "json-file"
+    options:
+      max-file: 3
+      max-size: "10m"
+
+x-limits: &limits
+  deploy:
+    resources:
+      limits:
+        cpus: "2.0"
+        memory: "4g"
+
+x-db-envs: &db-envs
+  DB_HOST: irms-db
+  DB_PORT: 5432
+  DB_USER: postgres
+  DB_PASSWORD: ${DB_PASSWORD}
+  DB_NAME: postgres
+
+x-valkey-envs: &valkey-envs
+  CACHE_HOST: irms-valkey
+  CACHE_PORT: 6379
+
+x-mqtt-envs: &mqtt-envs
+  MQTT_HOST: irms-mqtt
+  MQTT_PORT: 1883
+
+x-tz: &tz
+  TZ: Asia/Ho_Chi_Minh
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: irms-db
+    environment:
+      <<: *tz
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+    networks:
+      - backend-internal
+    <<: [ *logging, *limits ]
+  
+  valkey:
+    image: valkey/valkey:8.1.6
+    container_name: irms-valkey
+    expose:
+      - 6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 30s
+      retries: 50
+      start_period: 30s
+    # restart: unless-stopped
+    networks:
+      - backend-internal
+    <<: [ *logging, *limits ]
+  
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: irms-mqtt
+    volumes:
+      # - ./data/mqtt/config:/mosquitto/config
+      - ./data/mqtt/data:/mosquitto/data
+      - ./data/mqtt/log:/mosquitto/log
+    networks:
+      - backend-internal
+    <<: [ *logging, *limits ]
+
+  gateway:
+    image: local/irms-gateway
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: gateway
+    container_name: irms-gateway
+    #volumes:
+    #  - ./gateway:/app
+    #  - ./shared:/shared
+    environment:
+      <<: [ *tz, *db-envs ]
+    ports:
+      - 8000:8000
+    networks:
+      - backend-internal
+      - frontend
+    <<: [ *logging, *limits ]
+  
+  menu-service:
+    image: local/irms-menu-service
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: menu-service
+    container_name: irms-menu-service
+    #volumes:
+    #  - ./menu-service:/app
+    #  - ./shared:/shared
+    environment:
+      <<: [*tz, *db-envs, *valkey-envs]
+    #ports:
+    #  - 8001:8000
+    networks:
+      - backend-internal
+    <<: [ *logging, *limits ]
+
+  order-service:
+    image: local/irms-order-service
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: order-service
+    container_name: irms-order-service
+    #volumes:
+    #  - ./order-service:/app
+    #  - ./shared:/shared
+    environment:
+      <<: [*tz, *db-envs, *mqtt-envs]
+    #ports:
+    #  - 8002:8000
+    networks:
+      - backend-internal
+    <<: [ *logging, *limits ]
+  
+  background-worker:
+    image: local/irms-background-worker
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: background-worker
+    container_name: irms-background-worker
+    #volumes:
+    #  - ./order-service:/app
+    #  - ./shared:/shared
+    environment:
+      <<: [*tz, *db-envs, *mqtt-envs]
+    networks:
+      - backend-internal
+    <<: [ *logging, *limits ]
+
+  pgadmin:
+    image: dpage/pgadmin4:8.4
+    container_name: irms-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+      PGADMIN_CONFIG_CHECK_FOR_UPDATES: 'False'
+      PGADMIN_CONFIG_MAX_LOGIN_ATTEMPTS: 10
+      PGADMIN_CONFIG_LOGIN_LOCKOUT_DURATION: 1
+      TZ: Asia/Ho_Chi_Minh
+    volumes:
+      - ./data/pgadmin:/var/lib/pgadmin
+    ports:
+      - 8080:80
+    networks:
+      - backend-internal
+    <<: [ *logging, *limits ]
+
+
+networks:
+  backend-internal:
+    name: irms-backend-internal
+  frontend:
+    name: irms-frontend
+    external: true
+  
