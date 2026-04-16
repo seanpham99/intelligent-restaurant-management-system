@@ -62,6 +62,7 @@ async def order_status_websocket(
     # 1. Accept the WebSocket connection
     await websocket.accept()
     
+    topic = None
     try:
         # 2. Receive the initial order_id from the client
         # Expected format: {"order_id": "12345"}
@@ -98,7 +99,8 @@ async def order_status_websocket(
     except Exception as e:
         logger.error(f"Error in order status bridge: {e}")
     finally:
-        await mqtt.unsubscribe(topic)
+        if topic:
+            await mqtt.unsubscribe(topic)
         # 6. Ensure the WebSocket is closed if the loop breaks
         try:
             await websocket.close()
