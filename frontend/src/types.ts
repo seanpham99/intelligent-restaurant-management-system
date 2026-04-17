@@ -42,6 +42,9 @@ export interface OrderStatusEvent {
   description: string;
 }
 
+/**
+ * Single-order websocket subscription payload for /order/status.
+ */
 export interface OrderStatusSubscription {
   order_id: string;
 }

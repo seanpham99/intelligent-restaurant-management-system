@@ -29,16 +29,17 @@ export function openOrderStatusSocket(onMessage: (event: OrderStatusEvent) => vo
   return socket;
 }
 
+/**
+ * Backend websocket contract supports one order subscription per socket.
+ */
 export function subscribeOrderStatus(
-  orderIds: string[],
+  orderId: string,
   onMessage: (event: OrderStatusEvent) => void,
 ): WebSocket {
   const socket = openOrderStatusSocket(onMessage);
   socket.addEventListener('open', () => {
-    orderIds.forEach((orderId) => {
-      const payload: OrderStatusSubscription = { order_id: orderId };
-      socket.send(JSON.stringify(payload));
-    });
+    const payload: OrderStatusSubscription = { order_id: orderId };
+    socket.send(JSON.stringify(payload));
   });
   return socket;
 }
