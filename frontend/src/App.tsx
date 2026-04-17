@@ -22,6 +22,7 @@ import {
   planStatusRetry,
 } from './flow/status-connection';
 import { isSessionExpired, shouldApplySessionEpochUpdate } from './flow/session-timeout';
+import { canLeaveConfirmation } from './flow/confirmation-navigation';
 
 type StatusConnectionState =
   | 'idle'
@@ -438,6 +439,9 @@ export default function App() {
             isSubmitting={isCreatingOrder}
             submitError={createOrderError}
             onBack={() => {
+              if (!canLeaveConfirmation(isCreatingOrder)) {
+                return;
+              }
               refreshLastActivity();
               setCreateOrderError(null);
               handleFlowEvent({ type: 'VIEW_MENU' });

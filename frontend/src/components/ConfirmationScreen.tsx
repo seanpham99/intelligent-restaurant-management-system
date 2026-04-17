@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import Layout from './Layout';
 import { CartItem } from '../types';
 import { VAT_RATE } from '../constants';
+import { canLeaveConfirmation } from '../flow/confirmation-navigation';
 
 interface ConfirmationScreenProps {
   cart: CartItem[];
@@ -21,12 +22,17 @@ export default function ConfirmationScreen({
 }: ConfirmationScreenProps) {
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const total = subtotal; // Assuming VAT included in shown price as per design mocks
+  const canGoBack = canLeaveConfirmation(isSubmitting);
 
   return (
     <Layout className="bg-background">
       {/* Header */}
       <header className="sticky top-0 w-full z-50 bg-background/80 backdrop-blur-md flex justify-between items-center px-6 md:px-12 py-6 border-b border-border-subtle">
-        <button onClick={onBack} className="text-ink/60 hover:text-primary transition-colors">
+        <button
+          onClick={onBack}
+          disabled={!canGoBack}
+          className="text-ink/60 hover:text-primary disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+        >
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div className="font-display font-bold text-xl tracking-tighter text-ink italic">
@@ -106,7 +112,8 @@ export default function ConfirmationScreen({
           </button>
           <button
             onClick={onBack}
-            className="w-full md:flex-1 h-14 border border-border-subtle text-ink font-body font-bold text-xs uppercase tracking-widest rounded-full flex items-center justify-center transition-all hover:bg-ink/5"
+            disabled={!canGoBack}
+            className="w-full md:flex-1 h-14 border border-border-subtle text-ink font-body font-bold text-xs uppercase tracking-widest rounded-full flex items-center justify-center transition-all hover:bg-ink/5 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             Back to Menu
           </button>
