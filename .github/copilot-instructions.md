@@ -34,7 +34,7 @@
 - Order lifecycle is event-driven through MQTT:
   1. `order-service /order/create` generates UUIDs and publishes orders to topic `order/queue`.
   2. `background-worker` consumes `order/queue`, creates `bill/order/order_item`, updates ingredient amounts, and publishes status events to `order/status/{order_id}`.
-  3. Websocket status streaming ends when status reaches `DONE` (`status == 3`).
+  3. Websocket status events include `order_id`, and status streaming ends when the payload `status` reaches `"DONE"`.
 - `menu-service` serves `/item/list` and `/item/remaining_portions`; `/item/list` is cached in Valkey.
 - The frontend is a Vite + React SPA currently driven by local mock menu data (`frontend/src/constants.ts`) and in-memory screen state transitions in `App.tsx` (not route-based navigation).
 
