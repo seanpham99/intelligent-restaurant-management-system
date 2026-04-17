@@ -140,7 +140,7 @@ Before running the test command on a fresh checkout, install the test-only packa
 
 ## Test Command:
 `python3 -m pytest backend/tests --cov=routers.order --cov=httpx_client --cov=mqtt_queue --cov=model --cov-report=term-missing`
-## pytest.ini
-[pytest]
-testpaths = tests
-asyncio_mode = auto
+## Pytest configuration used
+The repository currently uses the explicit pytest command above rather than a committed `pytest.ini` file.
+If you want the same behavior locally, run tests from `backend/tests`. If a shared default configuration is needed later,
+add a real `pytest.ini` to the repository instead of documenting it here as if it already exists.
