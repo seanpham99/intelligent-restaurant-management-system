@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Menu as MenuIcon, ShoppingBag, Plus, Minus, ArrowRight } from 'lucide-react';
 import Layout from './Layout';
 import { Category, MenuItem, CartItem } from '../types';
-import { MENU_ITEMS } from '../constants';
 
 interface MenuScreenProps {
+  menuItems: MenuItem[];
+  isLoading: boolean;
+  menuError: string | null;
+  onRetryMenuLoad: () => void;
   cart: CartItem[];
   onUpdateCart: (item: MenuItem, delta: number) => void;
   onNext: () => void;
@@ -13,11 +16,30 @@ interface MenuScreenProps {
 
 const CATEGORIES: Category[] = ['Appetizers', 'Main Course', 'Drinks', 'Desserts'];
 
-export default function MenuScreen({ cart, onUpdateCart, onNext }: MenuScreenProps) {
+export default function MenuScreen({
+  menuItems,
+  isLoading,
+  menuError,
+  onRetryMenuLoad,
+  cart,
+  onUpdateCart,
+  onNext,
+}: MenuScreenProps) {
   const [activeCategory, setActiveCategory] = useState<Category>('Appetizers');
+  const availableCategories = CATEGORIES.filter(category =>
+    menuItems.some(item => item.category === category),
+  );
+  const filteredItems = menuItems.filter(item => item.category === activeCategory);
 
-  const filteredItems = MENU_ITEMS.filter(item => item.category === activeCategory);
-  
+  useEffect(() => {
+    if (availableCategories.length === 0) {
+      return;
+    }
+    if (!availableCategories.includes(activeCategory)) {
+      setActiveCategory(availableCategories[0]);
+    }
+  }, [activeCategory, availableCategories]);
+
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
@@ -53,10 +75,11 @@ export default function MenuScreen({ cart, onUpdateCart, onNext }: MenuScreenPro
             <button
               key={category}
               onClick={() => setActiveCategory(category)}
+              disabled={!isLoading && !availableCategories.includes(category)}
               className={`whitespace-nowrap font-body font-bold text-[10px] uppercase tracking-[0.2em] transition-all relative ${
                 activeCategory === category
                   ? 'text-primary after:absolute after:-bottom-2 after:left-0 after:w-full after:h-px after:bg-primary'
-                  : 'text-ink/40 hover:text-ink/60'
+                  : 'text-ink/40 hover:text-ink/60 disabled:opacity-30 disabled:cursor-not-allowed'
               }`}
             >
               {category}
@@ -74,81 +97,109 @@ export default function MenuScreen({ cart, onUpdateCart, onNext }: MenuScreenPro
 
         {/* Items List */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredItems.map(item => {
-            const quantity = getQuantity(item.id);
-            return (
-              <motion.div
-                layout
-                key={item.id}
-                className={`group p-6 flex flex-col gap-6 transition-all border border-border-subtle hover:border-primary/30 relative ${
-                  item.soldOut ? 'opacity-40 grayscale' : ''
-                }`}
+          {isLoading ? (
+            <div className="col-span-full border border-border-subtle p-8 text-center">
+              <p className="meta-tag text-primary mb-2">Loading</p>
+              <p className="font-body text-sm text-ink/60">Fetching menu from kitchen system...</p>
+            </div>
+          ) : menuError ? (
+            <div className="col-span-full border border-red-300 bg-red-50/30 p-8 text-center">
+              <p className="meta-tag text-red-700 mb-2">Menu unavailable</p>
+              <p className="font-body text-sm text-red-700/90 mb-4">
+                {menuError}
+              </p>
+              <button
+                onClick={onRetryMenuLoad}
+                className="px-6 h-10 bg-primary text-background font-body font-bold text-[10px] uppercase tracking-widest rounded-full"
               >
-                {item.popular && (
-                  <span className="absolute top-4 left-4 meta-tag text-[8px] text-primary">Popular Selection</span>
-                )}
-                
-                <div className="flex justify-between items-start gap-6 pt-4">
-                  <div className="flex-1 space-y-2">
-                    <h3 className="font-display font-medium text-xl text-ink italic leading-tight">
-                      {item.name}
-                    </h3>
-                    <p className="font-body text-xs text-ink/50 leading-relaxed line-clamp-2">
-                      {item.description}
-                    </p>
+                Retry loading menu
+              </button>
+            </div>
+          ) : filteredItems.length === 0 ? (
+            <div className="col-span-full border border-border-subtle p-8 text-center">
+              <p className="font-body text-sm text-ink/60">
+                No items are currently available in this category.
+              </p>
+            </div>
+          ) : (
+            filteredItems.map(item => {
+              const quantity = getQuantity(item.id);
+              const itemImage = item.imageUrl ?? item.image;
+
+              return (
+                <motion.div
+                  layout
+                  key={item.id}
+                  className={`group p-6 flex flex-col gap-6 transition-all border border-border-subtle hover:border-primary/30 relative ${
+                    item.soldOut ? 'opacity-40 grayscale' : ''
+                  }`}
+                >
+                  {item.popular && (
+                    <span className="absolute top-4 left-4 meta-tag text-[8px] text-primary">Popular Selection</span>
+                  )}
+
+                  <div className="flex justify-between items-start gap-6 pt-4">
+                    <div className="flex-1 space-y-2">
+                      <h3 className="font-display font-medium text-xl text-ink italic leading-tight">
+                        {item.name}
+                      </h3>
+                      <p className="font-body text-xs text-ink/50 leading-relaxed line-clamp-2">
+                        {item.description}
+                      </p>
+                    </div>
+                    {itemImage && (
+                      <div className="w-20 h-28 bg-surface-variant rounded-sm shrink-0 overflow-hidden border border-border-subtle relative">
+                        <img
+                          src={itemImage}
+                          alt={item.name}
+                          className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="absolute inset-0 bg-primary/5 mix-blend-overlay"></div>
+                      </div>
+                    )}
                   </div>
-                  {item.image && (
-                    <div className="w-20 h-28 bg-surface-variant rounded-sm shrink-0 overflow-hidden border border-border-subtle relative">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="absolute inset-0 bg-primary/5 mix-blend-overlay"></div>
-                    </div>
-                  )}
-                </div>
 
-                <div className="mt-auto flex justify-between items-center">
-                  <span className="font-display italic text-lg text-primary">
-                    {item.price.toLocaleString()} <span className="text-[10px] non-italic uppercase tracking-widest text-ink/40 font-body ml-1">{item.currency}</span>
-                  </span>
-
-                  {item.soldOut ? (
-                    <span className="font-body text-[10px] uppercase tracking-widest text-ink/40 font-bold">
-                      Sold Out
+                  <div className="mt-auto flex justify-between items-center">
+                    <span className="font-display italic text-lg text-primary">
+                      {item.price.toLocaleString()} <span className="text-[10px] non-italic uppercase tracking-widest text-ink/40 font-body ml-1">{item.currency}</span>
                     </span>
-                  ) : quantity > 0 ? (
-                    <div className="flex items-center border border-primary/20 rounded-full h-8 overflow-hidden bg-surface">
-                      <button 
-                        onClick={() => onUpdateCart(item, -1)}
-                        className="w-8 h-full flex items-center justify-center text-ink hover:text-primary transition-colors"
-                      >
-                        <Minus className="w-3 h-3" />
-                      </button>
-                      <span className="font-body font-bold text-[10px] w-6 text-center text-ink">
-                        {quantity}
+
+                    {item.soldOut ? (
+                      <span className="font-body text-[10px] uppercase tracking-widest text-ink/40 font-bold">
+                        Sold Out
                       </span>
-                      <button 
+                    ) : quantity > 0 ? (
+                      <div className="flex items-center border border-primary/20 rounded-full h-8 overflow-hidden bg-surface">
+                        <button
+                          onClick={() => onUpdateCart(item, -1)}
+                          className="w-8 h-full flex items-center justify-center text-ink hover:text-primary transition-colors"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="font-body font-bold text-[10px] w-6 text-center text-ink">
+                          {quantity}
+                        </span>
+                        <button
+                          onClick={() => onUpdateCart(item, 1)}
+                          className="w-8 h-full flex items-center justify-center text-ink hover:text-primary transition-colors"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
                         onClick={() => onUpdateCart(item, 1)}
-                        className="w-8 h-full flex items-center justify-center text-ink hover:text-primary transition-colors"
+                        className="text-[10px] uppercase tracking-[0.2em] font-bold underline underline-offset-4 decoration-primary/30 hover:decoration-primary/100 transition-all text-ink"
                       >
-                        <Plus className="w-3 h-3" />
+                        + Select
                       </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => onUpdateCart(item, 1)}
-                      className="text-[10px] uppercase tracking-[0.2em] font-bold underline underline-offset-4 decoration-primary/30 hover:decoration-primary/100 transition-all text-ink"
-                    >
-                      + Select
-                    </button>
-                  )}
-                </div>
-              </motion.div>
-            );
-          })}
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })
+          )}
         </div>
       </main>
 

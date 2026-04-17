@@ -1,16 +1,24 @@
 import { motion } from 'motion/react';
-import { ArrowLeft, Table } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import Layout from './Layout';
 import { CartItem } from '../types';
 import { VAT_RATE } from '../constants';
 
 interface ConfirmationScreenProps {
   cart: CartItem[];
+  isSubmitting: boolean;
+  submitError: string | null;
   onBack: () => void;
-  onNext: () => void;
+  onSubmit: () => void;
 }
 
-export default function ConfirmationScreen({ cart, onBack, onNext }: ConfirmationScreenProps) {
+export default function ConfirmationScreen({
+  cart,
+  isSubmitting,
+  submitError,
+  onBack,
+  onSubmit,
+}: ConfirmationScreenProps) {
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const total = subtotal; // Assuming VAT included in shown price as per design mocks
 
@@ -78,17 +86,24 @@ export default function ConfirmationScreen({ cart, onBack, onNext }: Confirmatio
         <p className="text-center font-body text-[10px] uppercase tracking-widest text-ink/30">
           Modifications must be finalized prior to submission.
         </p>
+        {submitError && (
+          <div className="border border-red-300 bg-red-50/40 p-4 text-center">
+            <p className="meta-tag text-red-700 mb-1">Submission failed</p>
+            <p className="font-body text-xs text-red-700/90">{submitError}</p>
+          </div>
+        )}
       </main>
 
       {/* Sticky Action Area */}
       <div className="fixed bottom-0 w-full max-w-[390px] md:max-w-none md:sticky md:bottom-0 bg-background/80 backdrop-blur-md z-50 p-6 md:px-12 flex flex-col md:flex-row gap-4 border-t border-border-subtle">
-        <button 
-          onClick={onNext}
-          className="w-full md:flex-1 h-14 bg-primary text-background font-body font-bold text-xs uppercase tracking-widest rounded-full flex items-center justify-center transition-all hover:brightness-110 active:scale-[0.98]"
+        <button
+          onClick={onSubmit}
+          disabled={isSubmitting}
+          className="w-full md:flex-1 h-14 bg-primary disabled:opacity-60 disabled:cursor-not-allowed text-background font-body font-bold text-xs uppercase tracking-widest rounded-full flex items-center justify-center transition-all hover:brightness-110 active:scale-[0.98]"
         >
-          Submit Order
+          {isSubmitting ? 'Submitting...' : 'Submit Order'}
         </button>
-        <button 
+        <button
           onClick={onBack}
           className="w-full md:flex-1 h-14 border border-border-subtle text-ink font-body font-bold text-xs uppercase tracking-widest rounded-full flex items-center justify-center transition-all hover:bg-ink/5"
         >
