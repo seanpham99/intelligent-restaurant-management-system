@@ -105,7 +105,7 @@ export default function PaymentScreen({ cart, onBack, onConfirm }: PaymentScreen
                   Cash
                 </span>
               </div>
-              {method === 'CASH' && <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_10px_#C5A059]"></div>}
+              {method === 'CASH' && <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_10px_var(--color-primary)]"></div>}
             </button>
             {/* Bank Transfer */}
             <button 
@@ -120,7 +120,7 @@ export default function PaymentScreen({ cart, onBack, onConfirm }: PaymentScreen
                   Transfer
                 </span>
               </div>
-              {method === 'TRANSFER' && <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_10px_#C5A059]"></div>}
+              {method === 'TRANSFER' && <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_10px_var(--color-primary)]"></div>}
             </button>
             {/* Card */}
             <button 
@@ -135,7 +135,7 @@ export default function PaymentScreen({ cart, onBack, onConfirm }: PaymentScreen
                   Card
                 </span>
               </div>
-              {method === 'CARD' && <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_10px_#C5A059]"></div>}
+              {method === 'CARD' && <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_10px_var(--color-primary)]"></div>}
             </button>
           </div>
         </section>

@@ -87,9 +87,9 @@ export default function ConfirmationScreen({
           Modifications must be finalized prior to submission.
         </p>
         {submitError && (
-          <div className="border border-red-300 bg-red-50/40 p-4 text-center">
-            <p className="meta-tag text-red-700 mb-1">Submission failed</p>
-            <p className="font-body text-xs text-red-700/90">{submitError}</p>
+          <div className="border border-error-border bg-error-surface p-4 text-center">
+            <p className="meta-tag text-error mb-1">Submission failed</p>
+            <p className="font-body text-xs text-error/90">{submitError}</p>
           </div>
         )}
       </main>

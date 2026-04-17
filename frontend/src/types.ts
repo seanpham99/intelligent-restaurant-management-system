@@ -1,5 +1,5 @@
 /**
- * Types for The Culinary Editor
+ * Types for Restaurant ABC
  */
 
 export type Category = 'Appetizers' | 'Main Course' | 'Drinks' | 'Desserts';

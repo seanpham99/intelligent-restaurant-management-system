@@ -103,9 +103,9 @@ export default function MenuScreen({
               <p className="font-body text-sm text-ink/60">Fetching menu from kitchen system...</p>
             </div>
           ) : menuError ? (
-            <div className="col-span-full border border-red-300 bg-red-50/30 p-8 text-center">
-              <p className="meta-tag text-red-700 mb-2">Menu unavailable</p>
-              <p className="font-body text-sm text-red-700/90 mb-4">
+            <div className="col-span-full border border-error-border bg-error-surface p-8 text-center">
+              <p className="meta-tag text-error mb-2">Menu unavailable</p>
+              <p className="font-body text-sm text-error/90 mb-4">
                 {menuError}
               </p>
               <button

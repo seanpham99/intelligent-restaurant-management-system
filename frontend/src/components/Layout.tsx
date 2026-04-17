@@ -13,7 +13,7 @@ export default function Layout({ children, className = '' }: LayoutProps) {
       <nav className="hidden md:flex w-20 flex-col justify-between items-center py-10 border-r border-border-subtle bg-background shrink-0">
         <div className="font-display font-bold text-2xl tracking-tighter">E.</div>
         <div className="vertical-label text-[10px] uppercase tracking-[0.3em] text-primary whitespace-nowrap opacity-80">
-          The Culinary Editor
+          Restaurant ABC
         </div>
         <div className="w-5 h-px bg-ink/30"></div>
       </nav>

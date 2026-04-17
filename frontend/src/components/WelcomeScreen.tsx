@@ -8,7 +8,7 @@ interface WelcomeScreenProps {
 
 export default function WelcomeScreen({ onNext }: WelcomeScreenProps) {
   return (
-    <Layout className="justify-center items-center text-center p-6 bg-white overflow-hidden">
+    <Layout className="justify-center items-center text-center p-6 bg-background overflow-hidden">
       {/* Ambient Decorative Element */}
       <div className="absolute top-[-10%] right-[-20%] w-[300px] h-[300px] bg-primary/5 rounded-full blur-[80px] pointer-events-none"></div>
       
@@ -19,7 +19,7 @@ export default function WelcomeScreen({ onNext }: WelcomeScreenProps) {
           animate={{ opacity: 1, x: 0 }}
           className="meta-tag text-primary"
         >
-          Gastronomy — Table 5
+          Table 1
         </motion.span>
 
         {/* Typography Cluster */}
@@ -30,9 +30,8 @@ export default function WelcomeScreen({ onNext }: WelcomeScreenProps) {
             transition={{ delay: 0.2 }}
             className="editorial-header text-6xl md:text-[100px] text-ink"
           >
-            The<br />
-            Culinary<br />
-            Editor
+            Restaurant<br />
+            ABC
           </motion.h1>
           <motion.p 
             initial={{ y: 20, opacity: 0 }}

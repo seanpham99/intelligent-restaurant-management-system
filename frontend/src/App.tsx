@@ -304,7 +304,7 @@ export default function App() {
   };
 
   return (
-    <div className="bg-stone-100 min-h-screen">
+    <div className="bg-page min-h-screen">
       <AnimatePresence mode="wait">
         <div key={currentScreen}>
           {renderScreen()}

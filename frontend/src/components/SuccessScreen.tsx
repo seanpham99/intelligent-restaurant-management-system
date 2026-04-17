@@ -23,9 +23,9 @@ interface SuccessScreenProps {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  IN_QUEUE: 'text-amber-700 border-amber-200 bg-amber-50',
+  IN_QUEUE: 'text-status-queue border-status-queue-border bg-status-queue-surface',
   PROCESSING: 'text-primary border-primary/30 bg-primary/5',
-  DONE: 'text-emerald-700 border-emerald-200 bg-emerald-50',
+  DONE: 'text-status-done border-status-done-border bg-status-done-surface',
 };
 
 const CONNECTION_LABELS: Record<StatusConnectionState, string> = {
@@ -70,9 +70,9 @@ export default function SuccessScreen({
           Please await excellence.
         </p>
         {statusConnectionMessage && (
-          <div className="w-full max-w-[360px] mb-8 border border-red-300 bg-red-50/40 p-4 text-left">
-            <p className="meta-tag text-red-700 mb-1">Live status issue</p>
-            <p className="font-body text-xs text-red-700/90 mb-3">{statusConnectionMessage}</p>
+          <div className="w-full max-w-[360px] mb-8 border border-error-border bg-error-surface p-4 text-left">
+            <p className="meta-tag text-error mb-1">Live status issue</p>
+            <p className="font-body text-xs text-error/90 mb-3">{statusConnectionMessage}</p>
             {canRetryStatus && (
               <button
                 onClick={onRetryStatus}
