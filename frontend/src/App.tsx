@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
-import { MenuItem, CartItem, Screen, OrderCreateResponse, OrderStatusEvent } from './types';
+import { MenuItem, CartItem, OrderCreateResponse, OrderStatusEvent } from './types';
 import WelcomeScreen from './components/WelcomeScreen';
 import MenuScreen from './components/MenuScreen';
 import ConfirmationScreen from './components/ConfirmationScreen';
@@ -13,6 +13,7 @@ import SuccessScreen from './components/SuccessScreen';
 import PaymentScreen from './components/PaymentScreen';
 import { fetchMenuItems } from './api/menu';
 import { createOrder, subscribeOrderStatus } from './api/order';
+import { transition, FlowEvent, FlowState } from './flow/session-machine';
 
 type StatusConnectionState =
   | 'idle'
@@ -59,7 +60,10 @@ function getStatusConnectionMessage(state: StatusConnectionState): string | null
 }
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('Welcome');
+  const [flowState, setFlowState] = useState<FlowState>({
+    screen: 'Welcome',
+    paymentSettled: false,
+  });
   const [cart, setCart] = useState<CartItem[]>([]);
   const [submittedCart, setSubmittedCart] = useState<CartItem[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -73,6 +77,16 @@ export default function App() {
   const [statusConnectionState, setStatusConnectionState] = useState<StatusConnectionState>('idle');
   const [statusConnectionMessage, setStatusConnectionMessage] = useState<string | null>(null);
   const [statusRetryKey, setStatusRetryKey] = useState(0);
+  const currentScreen = flowState.screen;
+
+  const handleFlowEvent = (event: FlowEvent): boolean => {
+    const result = transition(flowState, event);
+    if (!result.ok) {
+      return false;
+    }
+    setFlowState(result.state);
+    return true;
+  };
 
   const handleUpdateCart = (item: MenuItem, delta: number) => {
     setCart(prev => {
@@ -224,7 +238,7 @@ export default function App() {
       setStatusConnectionState('idle');
       setStatusConnectionMessage(null);
       setStatusRetryKey(0);
-      setCurrentScreen('Success');
+      handleFlowEvent({ type: 'SUBMIT_SUCCESS' });
     } catch (error: unknown) {
       setCreateOrderError(
         error instanceof Error
@@ -243,7 +257,7 @@ export default function App() {
   const renderScreen = () => {
     switch (currentScreen) {
       case 'Welcome':
-        return <WelcomeScreen onNext={() => setCurrentScreen('Menu')} />;
+        return <WelcomeScreen onNext={() => handleFlowEvent({ type: 'VIEW_MENU' })} />;
       case 'Menu':
         return (
           <MenuScreen
@@ -255,7 +269,7 @@ export default function App() {
             onUpdateCart={handleUpdateCart}
             onNext={() => {
               setCreateOrderError(null);
-              setCurrentScreen('Confirmation');
+              handleFlowEvent({ type: 'REVIEW_ORDER' });
             }}
           />
         );
@@ -267,7 +281,7 @@ export default function App() {
             submitError={createOrderError}
             onBack={() => {
               setCreateOrderError(null);
-              setCurrentScreen('Menu');
+              handleFlowEvent({ type: 'VIEW_MENU' });
             }}
             onSubmit={handleSubmitOrder}
           />
@@ -281,8 +295,8 @@ export default function App() {
             statusConnectionState={statusConnectionState}
             statusConnectionMessage={statusConnectionMessage}
             onRetryStatus={handleRetryStatus}
-            onAddMore={() => setCurrentScreen('Menu')}
-            onPay={() => setCurrentScreen('Payment')}
+            onAddMore={() => handleFlowEvent({ type: 'SUPPLEMENT_ORDER' })}
+            onPay={() => handleFlowEvent({ type: 'GO_PAYMENT' })}
           />
         );
       case 'Payment':
@@ -290,9 +304,13 @@ export default function App() {
           <PaymentScreen
             cart={submittedCart}
             createdOrders={createdOrders}
-            onBack={() => setCurrentScreen('Success')}
+            onBack={() => {
+              setFlowState(prev => ({ ...prev, screen: 'Success' }));
+            }}
             onConfirm={() => {
-              setCurrentScreen('Welcome');
+              if (!handleFlowEvent({ type: 'SETTLE_PAYMENT' })) {
+                return;
+              }
               setCart([]);
               setSubmittedCart([]);
               setCreatedOrders([]);
@@ -304,7 +322,7 @@ export default function App() {
           />
         );
       default:
-        return <WelcomeScreen onNext={() => setCurrentScreen('Menu')} />;
+        return <WelcomeScreen onNext={() => handleFlowEvent({ type: 'VIEW_MENU' })} />;
     }
   };
 
