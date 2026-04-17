@@ -66,7 +66,7 @@ async def list_items(
     db: Session = Depends(get_db)
     ) -> list[ItemResponse]:
     
-    CACHE_KEY = 'menu-service:list_items'
+    CACHE_KEY = 'menu-service:list_items:v2'
     handler = FetchListItemsHandler(db)
     data = get_cached_data(r, CACHE_KEY, handler, 300)
     return data
