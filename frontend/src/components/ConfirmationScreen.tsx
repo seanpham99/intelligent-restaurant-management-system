@@ -95,20 +95,22 @@ export default function ConfirmationScreen({
       </main>
 
       {/* Sticky Action Area */}
-      <div className="fixed bottom-0 w-full max-w-[390px] md:max-w-none md:sticky md:bottom-0 bg-background/80 backdrop-blur-md z-50 p-6 md:px-12 flex flex-col md:flex-row gap-4 border-t border-border-subtle">
-        <button
-          onClick={onSubmit}
-          disabled={isSubmitting}
-          className="w-full md:flex-1 h-14 bg-primary disabled:opacity-60 disabled:cursor-not-allowed text-background font-body font-bold text-xs uppercase tracking-widest rounded-full flex items-center justify-center transition-all hover:brightness-110 active:scale-[0.98]"
-        >
-          {isSubmitting ? 'Submitting...' : 'Submit Order'}
-        </button>
-        <button
-          onClick={onBack}
-          className="w-full md:flex-1 h-14 border border-border-subtle text-ink font-body font-bold text-xs uppercase tracking-widest rounded-full flex items-center justify-center transition-all hover:bg-ink/5"
-        >
-          Back to Menu
-        </button>
+      <div className="fixed inset-x-0 bottom-0 md:sticky md:bottom-0 bg-background/90 backdrop-blur-md z-50 px-4 sm:px-6 md:px-12 py-4 border-t border-border-subtle">
+        <div className="mx-auto w-full max-w-5xl flex flex-col md:flex-row gap-4">
+          <button
+            onClick={onSubmit}
+            disabled={isSubmitting}
+            className="w-full md:flex-1 h-14 bg-primary disabled:opacity-60 disabled:cursor-not-allowed text-background font-body font-bold text-xs uppercase tracking-widest rounded-full flex items-center justify-center transition-all hover:brightness-110 active:scale-[0.98]"
+          >
+            {isSubmitting ? 'Submitting...' : 'Submit Order'}
+          </button>
+          <button
+            onClick={onBack}
+            className="w-full md:flex-1 h-14 border border-border-subtle text-ink font-body font-bold text-xs uppercase tracking-widest rounded-full flex items-center justify-center transition-all hover:bg-ink/5"
+          >
+            Back to Menu
+          </button>
+        </div>
       </div>
     </Layout>
   );

@@ -177,13 +177,15 @@ export default function PaymentScreen({ cart, onBack, onConfirm }: PaymentScreen
       </main>
 
       {/* Sticky Checkout Strip */}
-      <div className="fixed bottom-0 left-0 w-full max-w-[390px] md:max-w-none md:sticky md:bottom-0 backdrop-blur-md px-6 md:px-12 py-8 z-50 border-t border-border-subtle bg-background/80">
-        <button 
-          onClick={onConfirm}
-          className="w-full md:w-auto md:px-20 h-14 bg-primary text-background font-body font-bold text-xs uppercase tracking-widest rounded-full flex items-center justify-center transition-all shadow-xl hover:brightness-110 active:scale-[0.98]"
-        >
-          Finalize Settlement
-        </button>
+      <div className="fixed inset-x-0 bottom-0 md:sticky md:bottom-0 backdrop-blur-md px-4 sm:px-6 md:px-12 py-4 z-50 border-t border-border-subtle bg-background/90">
+        <div className="mx-auto w-full max-w-5xl">
+          <button 
+            onClick={onConfirm}
+            className="w-full md:w-auto md:px-20 h-14 bg-primary text-background font-body font-bold text-xs uppercase tracking-widest rounded-full flex items-center justify-center transition-all shadow-xl hover:brightness-110 active:scale-[0.98]"
+          >
+            Finalize Settlement
+          </button>
+        </div>
       </div>
     </Layout>
   );
