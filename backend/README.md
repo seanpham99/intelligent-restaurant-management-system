@@ -133,9 +133,13 @@ Notes: about the `table_id` field, just keep it at 0 (Không xác định) for s
 3. Null values (invalid payload with item_id=None): `backend/tests/test_order_router.py:118`
 4. Empty order_id websocket input: `backend/tests/test_order_router.py:144`
 
-## Test Command: 
-python3 -m pytest backend/tests --cov=routers.order --cov=httpx_client --cov=mqtt_queue --cov=model --cov-report=term-missing
+## Install Test Dependencies
+Before running the test command on a fresh checkout, install the test-only packages required by the command and `pytest.ini`:
 
+`python3 -m pip install pytest pytest-asyncio pytest-cov`
+
+## Test Command:
+`python3 -m pytest backend/tests --cov=routers.order --cov=httpx_client --cov=mqtt_queue --cov=model --cov-report=term-missing`
 ## pytest.ini
 [pytest]
 testpaths = tests
