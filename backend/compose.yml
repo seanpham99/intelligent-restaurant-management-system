@@ -154,7 +154,7 @@ services:
     volumes:
       - ./data/pgadmin:/var/lib/pgadmin
     ports:
-      - 8080:80
+      - 8081:80
     networks:
       - backend-internal
     <<: [ *logging, *limits ]
