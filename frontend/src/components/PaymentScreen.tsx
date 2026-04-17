@@ -3,7 +3,7 @@ import { X, CreditCard, Banknote, Landmark } from 'lucide-react';
 import Layout from './Layout';
 import { CartItem, OrderCreateResponse } from '../types';
 import { TAX_RATE, SERVICE_CHARGE_RATE } from '../constants';
-import { SettlementResult } from '../flow/payment-guards';
+import type { SettlementResult } from '../flow/payment-guards';
 
 interface PaymentScreenProps {
   cart: CartItem[];

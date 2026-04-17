@@ -415,7 +415,6 @@ export default function App() {
                 paymentSettled: flowState.paymentSettled,
               });
               if (finalizeGuard.ok === false) {
-                setStatusConnectionMessage(getSettlementGuardMessage(finalizeGuard.reason));
                 return;
               }
               handleFlowEvent({ type: 'SETTLE_PAYMENT' });
