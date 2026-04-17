@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { MenuItem, CartItem, OrderCreateResponse, OrderStatusEvent } from './types';
 import WelcomeScreen from './components/WelcomeScreen';
@@ -21,6 +21,7 @@ import {
   canRetryStatusStream,
   planStatusRetry,
 } from './flow/status-connection';
+import { isSessionExpired } from './flow/session-timeout';
 
 type StatusConnectionState =
   | 'idle'
@@ -32,6 +33,7 @@ type StatusConnectionState =
 type OrderSocketState = 'connecting' | 'open' | 'closed' | 'disconnected' | 'error';
 
 const DEFAULT_TABLE_ID = 0;
+const TIMEOUT_MS = 5 * 60 * 1000;
 
 function deriveAggregateStatusConnectionState(
   statesByOrderId: Record<string, OrderSocketState>,
@@ -95,17 +97,42 @@ export default function App() {
   const [statusConnectionState, setStatusConnectionState] = useState<StatusConnectionState>('idle');
   const [statusConnectionMessage, setStatusConnectionMessage] = useState<string | null>(null);
   const [statusRetryAttempt, setStatusRetryAttempt] = useState(0);
+  const [lastActivityAt, setLastActivityAt] = useState(() => Date.now());
   const pendingSubmissionFingerprintsRef = useRef<Set<string>>(new Set());
   const statusRetryTimeoutRef = useRef<number | null>(null);
   const currentScreen = flowState.screen;
 
-  const clearStatusRetryTimeout = () => {
+  const clearStatusRetryTimeout = useCallback(() => {
     if (statusRetryTimeoutRef.current === null) {
       return;
     }
     window.clearTimeout(statusRetryTimeoutRef.current);
     statusRetryTimeoutRef.current = null;
-  };
+  }, []);
+
+  const refreshLastActivity = useCallback(() => {
+    setLastActivityAt(Date.now());
+  }, []);
+
+  const resetSessionArtifacts = useCallback(() => {
+    clearStatusRetryTimeout();
+    pendingSubmissionFingerprintsRef.current.clear();
+    setCart([]);
+    setSubmittedCart([]);
+    setCreatedOrders([]);
+    setOrderStatusById({});
+    setIsCreatingOrder(false);
+    setCreateOrderError(null);
+    setStatusConnectionState('idle');
+    setStatusConnectionMessage(null);
+    setStatusRetryAttempt(0);
+  }, [clearStatusRetryTimeout]);
+
+  const resetSessionToWelcome = useCallback(() => {
+    resetSessionArtifacts();
+    setFlowState({ screen: 'Welcome', paymentSettled: false });
+    setLastActivityAt(Date.now());
+  }, [resetSessionArtifacts]);
 
   const handleFlowEvent = (event: FlowEvent): void => {
     setFlowState(prev => {
@@ -118,6 +145,7 @@ export default function App() {
   };
 
   const handleUpdateCart = (item: MenuItem, delta: number) => {
+    refreshLastActivity();
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id);
       if (existing) {
@@ -133,6 +161,18 @@ export default function App() {
       return prev;
     });
   };
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      if (isSessionExpired(lastActivityAt, Date.now(), TIMEOUT_MS)) {
+        resetSessionToWelcome();
+      }
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [lastActivityAt, resetSessionToWelcome]);
 
   useEffect(() => {
     if (currentScreen !== 'Menu') {
@@ -271,10 +311,12 @@ export default function App() {
   }, [currentScreen, createdOrders, statusRetryAttempt]);
 
   const handleRetryMenuLoad = () => {
+    refreshLastActivity();
     setMenuRefreshKey(prev => prev + 1);
   };
 
   const handleSubmitOrder = async () => {
+    refreshLastActivity();
     const cartSnapshot = cart.map(item => ({ id: item.id, quantity: item.quantity }));
     const fingerprint = buildCartFingerprint(cartSnapshot);
 
@@ -330,6 +372,7 @@ export default function App() {
   };
 
   const handleRetryStatus = () => {
+    refreshLastActivity();
     const retryPlan = planStatusRetry(
       statusRetryAttempt,
       statusConnectionMessage
@@ -350,7 +393,15 @@ export default function App() {
   const renderScreen = () => {
     switch (currentScreen) {
       case 'Welcome':
-        return <WelcomeScreen onNext={() => handleFlowEvent({ type: 'VIEW_MENU' })} />;
+        return (
+          <WelcomeScreen
+            onActivity={refreshLastActivity}
+            onNext={() => {
+              refreshLastActivity();
+              handleFlowEvent({ type: 'VIEW_MENU' });
+            }}
+          />
+        );
       case 'Menu':
         return (
           <MenuScreen
@@ -361,6 +412,7 @@ export default function App() {
             cart={cart}
             onUpdateCart={handleUpdateCart}
             onNext={() => {
+              refreshLastActivity();
               setCreateOrderError(null);
               handleFlowEvent({ type: 'REVIEW_ORDER' });
             }}
@@ -373,6 +425,7 @@ export default function App() {
             isSubmitting={isCreatingOrder}
             submitError={createOrderError}
             onBack={() => {
+              refreshLastActivity();
               setCreateOrderError(null);
               handleFlowEvent({ type: 'VIEW_MENU' });
             }}
@@ -389,8 +442,14 @@ export default function App() {
             statusConnectionMessage={statusConnectionMessage}
             canRetryStatus={canRetryStatusStream(statusRetryAttempt)}
             onRetryStatus={handleRetryStatus}
-            onAddMore={() => handleFlowEvent({ type: 'SUPPLEMENT_ORDER' })}
-            onPay={() => handleFlowEvent({ type: 'GO_PAYMENT' })}
+            onAddMore={() => {
+              refreshLastActivity();
+              handleFlowEvent({ type: 'SUPPLEMENT_ORDER' });
+            }}
+            onPay={() => {
+              refreshLastActivity();
+              handleFlowEvent({ type: 'GO_PAYMENT' });
+            }}
           />
         );
       case 'Payment':
@@ -408,8 +467,12 @@ export default function App() {
             createdOrders={createdOrders}
             settlementGuard={settlementGuard}
             settlementGuardMessage={settlementGuardMessage}
-            onBack={() => handleFlowEvent({ type: 'BACK_TO_SUCCESS' })}
+            onBack={() => {
+              refreshLastActivity();
+              handleFlowEvent({ type: 'BACK_TO_SUCCESS' });
+            }}
             onConfirm={() => {
+              refreshLastActivity();
               const finalizeGuard = canFinalizeSettlement({
                 submittedItems: submittedCart.length,
                 paymentSettled: flowState.paymentSettled,
@@ -418,19 +481,20 @@ export default function App() {
                 return;
               }
               handleFlowEvent({ type: 'SETTLE_PAYMENT' });
-              setCart([]);
-              setSubmittedCart([]);
-              setCreatedOrders([]);
-              setOrderStatusById({});
-              setCreateOrderError(null);
-              setStatusConnectionState('idle');
-              setStatusConnectionMessage(null);
-              setStatusRetryAttempt(0);
+              resetSessionArtifacts();
             }}
           />
         );
       default:
-        return <WelcomeScreen onNext={() => handleFlowEvent({ type: 'VIEW_MENU' })} />;
+        return (
+          <WelcomeScreen
+            onActivity={refreshLastActivity}
+            onNext={() => {
+              refreshLastActivity();
+              handleFlowEvent({ type: 'VIEW_MENU' });
+            }}
+          />
+        );
     }
   };
 

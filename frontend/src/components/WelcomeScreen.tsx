@@ -4,9 +4,10 @@ import Layout from './Layout';
 
 interface WelcomeScreenProps {
   onNext: () => void;
+  onActivity?: () => void;
 }
 
-export default function WelcomeScreen({ onNext }: WelcomeScreenProps) {
+export default function WelcomeScreen({ onNext, onActivity }: WelcomeScreenProps) {
   return (
     <Layout className="justify-center items-center text-center p-6 bg-background overflow-hidden">
       {/* Ambient Decorative Element */}
@@ -52,13 +53,19 @@ export default function WelcomeScreen({ onNext }: WelcomeScreenProps) {
           className="w-full md:w-auto pt-4 flex flex-col md:flex-row gap-6 items-center"
         >
           <button 
-            onClick={onNext}
+            onClick={() => {
+              onActivity?.();
+              onNext();
+            }}
             className="w-full md:w-auto px-10 h-14 bg-primary text-background rounded-full font-body font-bold text-xs uppercase tracking-widest hover:brightness-110 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-3"
           >
             <span>View Menu</span>
             <ArrowRight className="w-4 h-4" />
           </button>
-          <button className="text-xs uppercase tracking-widest font-bold underline underline-offset-8 decoration-primary/30 hover:decoration-primary/100 transition-all">
+          <button
+            onClick={onActivity}
+            className="text-xs uppercase tracking-widest font-bold underline underline-offset-8 decoration-primary/30 hover:decoration-primary/100 transition-all"
+          >
             Find Out More
           </button>
         </motion.div>
