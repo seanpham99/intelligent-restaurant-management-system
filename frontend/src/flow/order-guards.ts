@@ -6,7 +6,7 @@ export type SubmitGuardResult =
   | { ok: true }
   | { ok: false; reason: 'EMPTY_CART' | 'STALE_ITEM' };
 
-export function buildCartFingerprint(cart: CartLine[]): string {
+export function buildCartFingerprint(cart: ReadonlyArray<CartLine>): string {
   return [...cart]
     .sort((left, right) => left.id.localeCompare(right.id))
     .map(line => `${line.id}:${line.quantity}`)
@@ -14,8 +14,8 @@ export function buildCartFingerprint(cart: CartLine[]): string {
 }
 
 export function canSubmitCart(
-  cart: CartLine[],
-  menuSnapshot: MenuSnapshotItem[],
+  cart: ReadonlyArray<CartLine>,
+  menuSnapshot: ReadonlyArray<MenuSnapshotItem>,
 ): SubmitGuardResult {
   if (cart.length === 0) {
     return { ok: false, reason: 'EMPTY_CART' };

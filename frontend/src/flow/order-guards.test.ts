@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { canSubmitCart, isDuplicatePendingSubmission } from './order-guards';
+import {
+  buildCartFingerprint,
+  canSubmitCart,
+  isDuplicatePendingSubmission,
+} from './order-guards';
 
 test('rejects empty cart', () => {
   const result = canSubmitCart([], []);
@@ -17,8 +21,22 @@ test('rejects stale sold-out item', () => {
   assert.deepEqual(result, { ok: false, reason: 'STALE_ITEM' });
 });
 
-test('detects duplicate pending submission', () => {
-  const pending = new Set(['fingerprint-1']);
+test('detects duplicate pending submission with deterministic fingerprint', () => {
+  const cart = [
+    { id: 'item-b', quantity: 1 },
+    { id: 'item-a', quantity: 2 },
+  ];
+  const reorderedCart = [
+    { id: 'item-a', quantity: 2 },
+    { id: 'item-b', quantity: 1 },
+  ];
 
-  assert.equal(isDuplicatePendingSubmission('fingerprint-1', pending), true);
+  const fingerprint = buildCartFingerprint(cart);
+  const reorderedFingerprint = buildCartFingerprint(reorderedCart);
+
+  assert.equal(fingerprint, 'item-a:2|item-b:1');
+  assert.equal(reorderedFingerprint, fingerprint);
+
+  const pending = new Set([fingerprint]);
+  assert.equal(isDuplicatePendingSubmission(reorderedFingerprint, pending), true);
 });
