@@ -3,7 +3,13 @@ import { CheckCircle2, Plus } from 'lucide-react';
 import Layout from './Layout';
 import { CartItem, OrderCreateResponse, OrderStatusEvent } from '../types';
 
-type StatusConnectionState = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error';
+type StatusConnectionState =
+  | 'idle'
+  | 'connecting'
+  | 'connected'
+  | 'completed'
+  | 'disconnected'
+  | 'error';
 
 interface SuccessScreenProps {
   cart: CartItem[];
@@ -26,6 +32,7 @@ const CONNECTION_LABELS: Record<StatusConnectionState, string> = {
   idle: 'Idle',
   connecting: 'Connecting',
   connected: 'Connected',
+  completed: 'Completed',
   disconnected: 'Disconnected',
   error: 'Error',
 };

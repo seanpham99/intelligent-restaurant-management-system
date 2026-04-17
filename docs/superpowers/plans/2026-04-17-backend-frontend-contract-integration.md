@@ -178,7 +178,7 @@ git commit -m "feat: rewrite menu API contract for frontend alignment"
 import json
 import urllib.request
 
-payload = json.dumps([{"item_id": "1", "table_id": 5, "amount": 1}]).encode()
+payload = json.dumps([{"item_id": "1", "table_id": 0, "amount": 1}]).encode()
 req = urllib.request.Request(
     "http://localhost:8000/order/create",
     data=payload,
@@ -383,7 +383,7 @@ useEffect(() => {
 }, [currentScreen]);
 
 const submitOrder = async () => {
-  const payload = cart.map(i => ({ item_id: i.id, table_id: 5, amount: i.quantity }));
+  const payload = cart.map(i => ({ item_id: i.id, table_id: 0, amount: i.quantity }));
   const created = await createOrder(payload);
   setCreatedOrders(created);
   setCurrentScreen('Success');
@@ -445,7 +445,7 @@ Event shape:
 Run:
 1. `cd backend && make services-up`
 2. `curl --request GET --url http://localhost:8000/menu/list_items`
-3. `curl --request POST --url http://localhost:8000/order/create --header 'content-type: application/json' --data '[{"item_id":"1","table_id":5,"amount":1}]'`
+3. `curl --request POST --url http://localhost:8000/order/create --header 'content-type: application/json' --data '[{"item_id":"1","table_id":0,"amount":1}]'`
 4. `cd frontend && npm run lint && npm run build`
 
 Expected:
@@ -467,4 +467,3 @@ git commit -m "docs: update API contract examples for frontend integration"
 - **Spec coverage:** Menu contract rewrite, order create contract rewrite, websocket status contract rewrite, frontend API integration, and smoke verification are all mapped to tasks.
 - **Placeholder scan:** No TODO/TBD placeholders remain; each step includes concrete files, code, and commands.
 - **Type consistency:** `MenuItem`, `OrderCreateInput/Response`, and `OrderStatusEvent` names are consistent across backend contract targets and frontend API usage.
-

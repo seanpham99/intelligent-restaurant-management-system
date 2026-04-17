@@ -14,10 +14,16 @@ import PaymentScreen from './components/PaymentScreen';
 import { fetchMenuItems } from './api/menu';
 import { createOrder, subscribeOrderStatus } from './api/order';
 
-type StatusConnectionState = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error';
-type OrderSocketState = 'connecting' | 'open' | 'disconnected' | 'error';
+type StatusConnectionState =
+  | 'idle'
+  | 'connecting'
+  | 'connected'
+  | 'completed'
+  | 'disconnected'
+  | 'error';
+type OrderSocketState = 'connecting' | 'open' | 'closed' | 'disconnected' | 'error';
 
-const DEFAULT_TABLE_ID = 5;
+const DEFAULT_TABLE_ID = 0;
 
 function deriveAggregateStatusConnectionState(
   statesByOrderId: Record<string, OrderSocketState>,
@@ -32,7 +38,10 @@ function deriveAggregateStatusConnectionState(
   if (states.includes('disconnected')) {
     return 'disconnected';
   }
-  if (states.every(state => state === 'open')) {
+  if (states.every(state => state === 'closed')) {
+    return 'completed';
+  }
+  if (states.every(state => state === 'open' || state === 'closed')) {
     return 'connected';
   }
   return 'connecting';
@@ -163,7 +172,11 @@ export default function App() {
       });
 
       socket.addEventListener('close', closeEvent => {
-        if (isCleanedUp || closeEvent.code === 1000) {
+        if (isCleanedUp) {
+          return;
+        }
+        if (closeEvent.code === 1000) {
+          updateOrderSocketState(order.id, 'closed');
           return;
         }
         updateOrderSocketState(order.id, 'disconnected');

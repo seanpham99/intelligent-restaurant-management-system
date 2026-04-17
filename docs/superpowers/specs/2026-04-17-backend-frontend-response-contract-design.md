@@ -58,7 +58,7 @@ This design defines a contract-first rewrite so backend responses become the can
 
 ```json
 [
-  { "item_id": "1", "table_id": 5, "amount": 2 }
+  { "item_id": "1", "table_id": 0, "amount": 2 }
 ]
 ```
 
@@ -66,7 +66,7 @@ This design defines a contract-first rewrite so backend responses become the can
 
 ```json
 [
-  { "id": "uuid", "item_id": "1", "table_id": 5, "amount": 2 }
+  { "id": "uuid", "item_id": "1", "table_id": 0, "amount": 2 }
 ]
 ```
 
@@ -138,4 +138,3 @@ This design defines a contract-first rewrite so backend responses become the can
 - Payment API integration beyond current frontend flow.
 - Introducing route-based navigation.
 - Maintaining legacy contract compatibility.
-

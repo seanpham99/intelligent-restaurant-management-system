@@ -82,14 +82,14 @@ def test_create_order_happy_path(app_factory):
     app = app_factory(mqtt)
     client = TestClient(app)
 
-    payload = [{"item_id": "1", "table_id": 5, "amount": 2.0}]
+    payload = [{"item_id": "1", "table_id": 0, "amount": 2.0}]
     response = client.post("/order/create", json=payload)
 
     assert response.status_code == 200
     body = response.json()
     assert len(body) == 1
     assert body[0]["item_id"] == "1"
-    assert body[0]["table_id"] == 5
+    assert body[0]["table_id"] == 0
     assert body[0]["amount"] == 2.0
     assert isinstance(body[0]["id"], str) and body[0]["id"]
 
