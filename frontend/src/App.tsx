@@ -21,7 +21,7 @@ import {
   canRetryStatusStream,
   planStatusRetry,
 } from './flow/status-connection';
-import { isSessionExpired } from './flow/session-timeout';
+import { isSessionExpired, shouldApplySessionEpochUpdate } from './flow/session-timeout';
 
 type StatusConnectionState =
   | 'idle'
@@ -98,6 +98,7 @@ export default function App() {
   const [statusConnectionMessage, setStatusConnectionMessage] = useState<string | null>(null);
   const [statusRetryAttempt, setStatusRetryAttempt] = useState(0);
   const [lastActivityAt, setLastActivityAt] = useState(() => Date.now());
+  const sessionEpochRef = useRef(0);
   const pendingSubmissionFingerprintsRef = useRef<Set<string>>(new Set());
   const statusRetryTimeoutRef = useRef<number | null>(null);
   const currentScreen = flowState.screen;
@@ -114,7 +115,10 @@ export default function App() {
     setLastActivityAt(Date.now());
   }, []);
 
-  const resetSessionArtifacts = useCallback(() => {
+  const resetSessionArtifacts = useCallback((options?: { bumpEpoch?: boolean }) => {
+    if (options?.bumpEpoch === true) {
+      sessionEpochRef.current += 1;
+    }
     clearStatusRetryTimeout();
     pendingSubmissionFingerprintsRef.current.clear();
     setCart([]);
@@ -129,7 +133,7 @@ export default function App() {
   }, [clearStatusRetryTimeout]);
 
   const resetSessionToWelcome = useCallback(() => {
-    resetSessionArtifacts();
+    resetSessionArtifacts({ bumpEpoch: true });
     setFlowState({ screen: 'Welcome', paymentSettled: false });
     setLastActivityAt(Date.now());
   }, [resetSessionArtifacts]);
@@ -348,9 +352,13 @@ export default function App() {
       table_id: DEFAULT_TABLE_ID,
       amount: item.quantity,
     }));
+    const submitEpoch = sessionEpochRef.current;
 
     try {
       const created = await createOrder(payload);
+      if (!shouldApplySessionEpochUpdate(sessionEpochRef.current, submitEpoch)) {
+        return;
+      }
       setCreatedOrders(created);
       setSubmittedCart(cart);
       setCart([]);
@@ -360,12 +368,18 @@ export default function App() {
       setStatusRetryAttempt(0);
       handleFlowEvent({ type: 'SUBMIT_SUCCESS' });
     } catch (error: unknown) {
+      if (!shouldApplySessionEpochUpdate(sessionEpochRef.current, submitEpoch)) {
+        return;
+      }
       setCreateOrderError(
         error instanceof Error
           ? `Order submission failed: ${error.message}`
           : 'Order submission failed. Please check your connection and try again.',
       );
     } finally {
+      if (!shouldApplySessionEpochUpdate(sessionEpochRef.current, submitEpoch)) {
+        return;
+      }
       pendingSubmissionFingerprintsRef.current.delete(fingerprint);
       setIsCreatingOrder(false);
     }
@@ -397,7 +411,6 @@ export default function App() {
           <WelcomeScreen
             onActivity={refreshLastActivity}
             onNext={() => {
-              refreshLastActivity();
               handleFlowEvent({ type: 'VIEW_MENU' });
             }}
           />
@@ -481,7 +494,7 @@ export default function App() {
                 return;
               }
               handleFlowEvent({ type: 'SETTLE_PAYMENT' });
-              resetSessionArtifacts();
+              resetSessionArtifacts({ bumpEpoch: true });
             }}
           />
         );
@@ -490,7 +503,6 @@ export default function App() {
           <WelcomeScreen
             onActivity={refreshLastActivity}
             onNext={() => {
-              refreshLastActivity();
               handleFlowEvent({ type: 'VIEW_MENU' });
             }}
           />

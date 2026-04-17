@@ -5,3 +5,10 @@ export function isSessionExpired(
 ): boolean {
   return nowMs - lastActivityAtMs > timeoutMs;
 }
+
+export function shouldApplySessionEpochUpdate(
+  currentEpoch: number,
+  updateEpoch: number,
+): boolean {
+  return currentEpoch === updateEpoch;
+}
