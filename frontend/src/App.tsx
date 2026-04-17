@@ -15,7 +15,11 @@ import { fetchMenuItems } from './api/menu';
 import { createOrder, subscribeOrderStatus } from './api/order';
 import { transition, FlowEvent, FlowState } from './flow/session-machine';
 import { buildCartFingerprint, canSubmitCart, isDuplicatePendingSubmission } from './flow/order-guards';
-import { canRetryStatusStream, nextRetryDelayMs } from './flow/status-connection';
+import {
+  STATUS_STREAM_UNAVAILABLE_MESSAGE,
+  canRetryStatusStream,
+  planStatusRetry,
+} from './flow/status-connection';
 
 type StatusConnectionState =
   | 'idle'
@@ -27,7 +31,6 @@ type StatusConnectionState =
 type OrderSocketState = 'connecting' | 'open' | 'closed' | 'disconnected' | 'error';
 
 const DEFAULT_TABLE_ID = 0;
-const STATUS_STREAM_UNAVAILABLE_MESSAGE = 'Live status unavailable. Please refresh the order board.';
 
 function deriveAggregateStatusConnectionState(
   statesByOrderId: Record<string, OrderSocketState>,
@@ -79,7 +82,6 @@ export default function App() {
   const [orderStatusById, setOrderStatusById] = useState<Record<string, OrderStatusEvent>>({});
   const [statusConnectionState, setStatusConnectionState] = useState<StatusConnectionState>('idle');
   const [statusConnectionMessage, setStatusConnectionMessage] = useState<string | null>(null);
-  const [statusRetryKey, setStatusRetryKey] = useState(0);
   const [statusRetryAttempt, setStatusRetryAttempt] = useState(0);
   const pendingSubmissionFingerprintsRef = useRef<Set<string>>(new Set());
   const statusRetryTimeoutRef = useRef<number | null>(null);
@@ -168,13 +170,8 @@ export default function App() {
       createdOrders.map(order => [order.id, 'connecting']),
     ) as Record<string, OrderSocketState>;
 
-    const scheduleRetry = () => {
+    const scheduleRetry = (delayMs: number, nextAttempt: number) => {
       if (isCleanedUp || isRetryScheduled) {
-        return;
-      }
-      if (!canRetryStatusStream(statusRetryAttempt)) {
-        setStatusConnectionMessage(STATUS_STREAM_UNAVAILABLE_MESSAGE);
-        clearStatusRetryTimeout();
         return;
       }
       isRetryScheduled = true;
@@ -183,22 +180,24 @@ export default function App() {
         if (isCleanedUp) {
           return;
         }
-        setStatusRetryAttempt(prev => prev + 1);
-        setStatusRetryKey(prev => prev + 1);
-      }, nextRetryDelayMs(statusRetryAttempt));
+        setStatusRetryAttempt(nextAttempt);
+      }, delayMs);
     };
 
     const syncAggregateStatus = (nextOrderSocketStates: Record<string, OrderSocketState>) => {
       const aggregateState = deriveAggregateStatusConnectionState(nextOrderSocketStates);
       setStatusConnectionState(aggregateState);
       if (aggregateState === 'error' || aggregateState === 'disconnected') {
-        if (!canRetryStatusStream(statusRetryAttempt)) {
-          setStatusConnectionMessage(STATUS_STREAM_UNAVAILABLE_MESSAGE);
+        const retryPlan = planStatusRetry(
+          statusRetryAttempt,
+          getStatusConnectionMessage(aggregateState) ?? STATUS_STREAM_UNAVAILABLE_MESSAGE,
+        );
+        setStatusConnectionMessage(retryPlan.message);
+        if (!retryPlan.shouldSchedule || retryPlan.delayMs === null) {
           clearStatusRetryTimeout();
           return;
         }
-        setStatusConnectionMessage(getStatusConnectionMessage(aggregateState));
-        scheduleRetry();
+        scheduleRetry(retryPlan.delayMs, retryPlan.nextAttempt);
         return;
       }
       setStatusConnectionMessage(getStatusConnectionMessage(aggregateState));
@@ -257,7 +256,7 @@ export default function App() {
         }
       });
     };
-  }, [currentScreen, createdOrders, statusRetryAttempt, statusRetryKey]);
+  }, [currentScreen, createdOrders, statusRetryAttempt]);
 
   const handleRetryMenuLoad = () => {
     setMenuRefreshKey(prev => prev + 1);
@@ -304,7 +303,6 @@ export default function App() {
       setOrderStatusById({});
       setStatusConnectionState('idle');
       setStatusConnectionMessage(null);
-      setStatusRetryKey(0);
       setStatusRetryAttempt(0);
       handleFlowEvent({ type: 'SUBMIT_SUCCESS' });
     } catch (error: unknown) {
@@ -320,16 +318,21 @@ export default function App() {
   };
 
   const handleRetryStatus = () => {
-    if (!canRetryStatusStream(statusRetryAttempt)) {
-      setStatusConnectionMessage(STATUS_STREAM_UNAVAILABLE_MESSAGE);
+    const retryPlan = planStatusRetry(
+      statusRetryAttempt,
+      statusConnectionMessage
+        ?? getStatusConnectionMessage(statusConnectionState)
+        ?? STATUS_STREAM_UNAVAILABLE_MESSAGE,
+    );
+    setStatusConnectionMessage(retryPlan.message);
+    if (!retryPlan.shouldSchedule || retryPlan.delayMs === null) {
       clearStatusRetryTimeout();
       return;
     }
     clearStatusRetryTimeout();
     statusRetryTimeoutRef.current = window.setTimeout(() => {
-      setStatusRetryAttempt(prev => prev + 1);
-      setStatusRetryKey(prev => prev + 1);
-    }, nextRetryDelayMs(statusRetryAttempt));
+      setStatusRetryAttempt(retryPlan.nextAttempt);
+    }, retryPlan.delayMs);
   };
 
   const renderScreen = () => {
