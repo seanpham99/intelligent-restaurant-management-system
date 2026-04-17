@@ -60,8 +60,6 @@ async def order_status_websocket(
 ):
     await websocket.accept()
 
-    client = create_standalone_mqtt(prefix="order_track")
-
     try:
         data = await websocket.receive_json()
         order_id = data.get("order_id")
@@ -71,6 +69,7 @@ async def order_status_websocket(
             await websocket.close(code=1003)
             return
 
+        client = create_standalone_mqtt(prefix="order_track")
         topic = f"order/status/{order_id}"
         async with client:
             await client.subscribe(topic)
