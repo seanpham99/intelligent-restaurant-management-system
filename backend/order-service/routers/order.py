@@ -56,11 +56,12 @@ async def create_order(
 
 @router.websocket("/status")
 async def order_status_websocket(
-    websocket: WebSocket
+    websocket: WebSocket,
+    mqtt: aiomqtt.Client = Depends(get_global_mqtt)
 ):
     await websocket.accept()
 
-    client = create_standalone_mqtt(prefix="order_track")
+    topic = None
 
     try:
         data = await websocket.receive_json()
@@ -72,31 +73,35 @@ async def order_status_websocket(
             return
 
         topic = f"order/status/{order_id}"
-        async with client:
-            await client.subscribe(topic)
-            logger.info(f"WebSocket client tracking order: {order_id}")
+        await mqtt.subscribe(topic)
+        logger.info(f"WebSocket client tracking order: {order_id}")
 
-            async for message in client.messages:
-                payload_data = json.loads(message.payload.decode())
-                if payload_data.get("order_id") != order_id:
-                    logger.warning(
-                        "Ignoring status event for mismatched order_id. "
-                        f"expected={order_id} actual={payload_data.get('order_id')}"
-                    )
-                    continue
+        async for message in mqtt.messages:
+            payload_data = json.loads(message.payload.decode())
+            if payload_data.get("order_id") != order_id:
+                logger.warning(
+                    "Ignoring status event for mismatched order_id. "
+                    f"expected={order_id} actual={payload_data.get('order_id')}"
+                )
+                continue
 
-                await websocket.send_json(payload_data)
-                logger.debug(f"Relayed MQTT status for {order_id}: {payload_data}")
+            await websocket.send_json(payload_data)
+            logger.debug(f"Relayed MQTT status for {order_id}: {payload_data}")
 
-                if payload_data.get("status") == ORDER_STATUS.DONE.name:
-                    logger.info(f"Order {order_id} reached final status. Closing connection.")
-                    break
+            if payload_data.get("status") == ORDER_STATUS.DONE.name:
+                logger.info(f"Order {order_id} reached final status. Closing connection.")
+                break
 
     except WebSocketDisconnect:
         logger.info("WebSocket client disconnected.")
     except Exception as e:
         logger.error(f"Error in order status bridge: {e}")
     finally:
+        if topic:
+            try:
+                await mqtt.unsubscribe(topic)
+            except Exception:
+                pass
         try:
             await websocket.close()
         except:

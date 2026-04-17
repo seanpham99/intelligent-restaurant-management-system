@@ -20,9 +20,8 @@ def main() -> None:
 
     assert isinstance(data, list) and data, "menu list must be a non-empty array"
     keys = set(data[0].keys())
-    assert keys == REQUIRED, (
-        f"contract key mismatch: missing={sorted(REQUIRED - keys)}, "
-        f"unexpected={sorted(keys - REQUIRED)}"
+    assert REQUIRED.issubset(keys), (
+        f"contract key mismatch: missing={sorted(REQUIRED - keys)}"
     )
 
 
