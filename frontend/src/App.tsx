@@ -15,8 +15,39 @@ import { fetchMenuItems } from './api/menu';
 import { createOrder, subscribeOrderStatus } from './api/order';
 
 type StatusConnectionState = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error';
+type OrderSocketState = 'connecting' | 'open' | 'disconnected' | 'error';
 
 const DEFAULT_TABLE_ID = 5;
+
+function deriveAggregateStatusConnectionState(
+  statesByOrderId: Record<string, OrderSocketState>,
+): StatusConnectionState {
+  const states = Object.values(statesByOrderId);
+  if (states.length === 0) {
+    return 'idle';
+  }
+  if (states.includes('error')) {
+    return 'error';
+  }
+  if (states.includes('disconnected')) {
+    return 'disconnected';
+  }
+  if (states.every(state => state === 'open')) {
+    return 'connected';
+  }
+  return 'connecting';
+}
+
+function getStatusConnectionMessage(state: StatusConnectionState): string | null {
+  switch (state) {
+    case 'error':
+      return 'Live status failed to connect. Please retry.';
+    case 'disconnected':
+      return 'Live status disconnected. Retry to reconnect.';
+    default:
+      return null;
+  }
+}
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('Welcome');
@@ -92,9 +123,28 @@ export default function App() {
     }
 
     let isCleanedUp = false;
-    let openedSocketCount = 0;
-    setStatusConnectionState('connecting');
-    setStatusConnectionMessage(null);
+    let orderSocketStates: Record<string, OrderSocketState> = Object.fromEntries(
+      createdOrders.map(order => [order.id, 'connecting']),
+    ) as Record<string, OrderSocketState>;
+
+    const syncAggregateStatus = (nextOrderSocketStates: Record<string, OrderSocketState>) => {
+      const aggregateState = deriveAggregateStatusConnectionState(nextOrderSocketStates);
+      setStatusConnectionState(aggregateState);
+      setStatusConnectionMessage(getStatusConnectionMessage(aggregateState));
+    };
+
+    const updateOrderSocketState = (orderId: string, nextState: OrderSocketState) => {
+      if (isCleanedUp) {
+        return;
+      }
+      orderSocketStates = {
+        ...orderSocketStates,
+        [orderId]: nextState,
+      };
+      syncAggregateStatus(orderSocketStates);
+    };
+
+    syncAggregateStatus(orderSocketStates);
 
     const sockets = createdOrders.map(order => {
       const socket = subscribeOrderStatus(order.id, event => {
@@ -105,29 +155,18 @@ export default function App() {
       });
 
       socket.addEventListener('open', () => {
-        if (isCleanedUp) {
-          return;
-        }
-        openedSocketCount += 1;
-        if (openedSocketCount === createdOrders.length) {
-          setStatusConnectionState('connected');
-        }
+        updateOrderSocketState(order.id, 'open');
       });
 
       socket.addEventListener('error', () => {
-        if (isCleanedUp) {
-          return;
-        }
-        setStatusConnectionState('error');
-        setStatusConnectionMessage('Live status failed to connect. Please retry.');
+        updateOrderSocketState(order.id, 'error');
       });
 
       socket.addEventListener('close', closeEvent => {
         if (isCleanedUp || closeEvent.code === 1000) {
           return;
         }
-        setStatusConnectionState('disconnected');
-        setStatusConnectionMessage('Live status disconnected. Retry to reconnect.');
+        updateOrderSocketState(order.id, 'disconnected');
       });
 
       return socket;
