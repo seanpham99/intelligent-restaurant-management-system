@@ -17,6 +17,7 @@ interface SuccessScreenProps {
   orderStatusById: Record<string, OrderStatusEvent>;
   statusConnectionState: StatusConnectionState;
   statusConnectionMessage: string | null;
+  canRetryStatus: boolean;
   onRetryStatus: () => void;
   onAddMore: () => void;
   onPay: () => void;
@@ -43,12 +44,12 @@ export default function SuccessScreen({
   orderStatusById,
   statusConnectionState,
   statusConnectionMessage,
+  canRetryStatus,
   onRetryStatus,
   onAddMore,
   onPay,
 }: SuccessScreenProps) {
   const itemNameById = Object.fromEntries(cart.map(item => [item.id, item.name]));
-  const canRetryStatus = statusConnectionState === 'disconnected' || statusConnectionState === 'error';
 
   return (
     <Layout className="bg-background">

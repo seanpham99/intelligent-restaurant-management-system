@@ -15,6 +15,7 @@ import { fetchMenuItems } from './api/menu';
 import { createOrder, subscribeOrderStatus } from './api/order';
 import { transition, FlowEvent, FlowState } from './flow/session-machine';
 import { buildCartFingerprint, canSubmitCart, isDuplicatePendingSubmission } from './flow/order-guards';
+import { canRetryStatusStream, nextRetryDelayMs } from './flow/status-connection';
 
 type StatusConnectionState =
   | 'idle'
@@ -26,6 +27,7 @@ type StatusConnectionState =
 type OrderSocketState = 'connecting' | 'open' | 'closed' | 'disconnected' | 'error';
 
 const DEFAULT_TABLE_ID = 0;
+const STATUS_STREAM_UNAVAILABLE_MESSAGE = 'Live status unavailable. Please refresh the order board.';
 
 function deriveAggregateStatusConnectionState(
   statesByOrderId: Record<string, OrderSocketState>,
@@ -78,8 +80,18 @@ export default function App() {
   const [statusConnectionState, setStatusConnectionState] = useState<StatusConnectionState>('idle');
   const [statusConnectionMessage, setStatusConnectionMessage] = useState<string | null>(null);
   const [statusRetryKey, setStatusRetryKey] = useState(0);
+  const [statusRetryAttempt, setStatusRetryAttempt] = useState(0);
   const pendingSubmissionFingerprintsRef = useRef<Set<string>>(new Set());
+  const statusRetryTimeoutRef = useRef<number | null>(null);
   const currentScreen = flowState.screen;
+
+  const clearStatusRetryTimeout = () => {
+    if (statusRetryTimeoutRef.current === null) {
+      return;
+    }
+    window.clearTimeout(statusRetryTimeoutRef.current);
+    statusRetryTimeoutRef.current = null;
+  };
 
   const handleFlowEvent = (event: FlowEvent): void => {
     setFlowState(prev => {
@@ -146,18 +158,51 @@ export default function App() {
 
   useEffect(() => {
     if (currentScreen !== 'Success' || createdOrders.length === 0) {
+      clearStatusRetryTimeout();
       return;
     }
 
     let isCleanedUp = false;
+    let isRetryScheduled = false;
     let orderSocketStates: Record<string, OrderSocketState> = Object.fromEntries(
       createdOrders.map(order => [order.id, 'connecting']),
     ) as Record<string, OrderSocketState>;
 
+    const scheduleRetry = () => {
+      if (isCleanedUp || isRetryScheduled) {
+        return;
+      }
+      if (!canRetryStatusStream(statusRetryAttempt)) {
+        setStatusConnectionMessage(STATUS_STREAM_UNAVAILABLE_MESSAGE);
+        clearStatusRetryTimeout();
+        return;
+      }
+      isRetryScheduled = true;
+      clearStatusRetryTimeout();
+      statusRetryTimeoutRef.current = window.setTimeout(() => {
+        if (isCleanedUp) {
+          return;
+        }
+        setStatusRetryAttempt(prev => prev + 1);
+        setStatusRetryKey(prev => prev + 1);
+      }, nextRetryDelayMs(statusRetryAttempt));
+    };
+
     const syncAggregateStatus = (nextOrderSocketStates: Record<string, OrderSocketState>) => {
       const aggregateState = deriveAggregateStatusConnectionState(nextOrderSocketStates);
       setStatusConnectionState(aggregateState);
+      if (aggregateState === 'error' || aggregateState === 'disconnected') {
+        if (!canRetryStatusStream(statusRetryAttempt)) {
+          setStatusConnectionMessage(STATUS_STREAM_UNAVAILABLE_MESSAGE);
+          clearStatusRetryTimeout();
+          return;
+        }
+        setStatusConnectionMessage(getStatusConnectionMessage(aggregateState));
+        scheduleRetry();
+        return;
+      }
       setStatusConnectionMessage(getStatusConnectionMessage(aggregateState));
+      clearStatusRetryTimeout();
     };
 
     const updateOrderSocketState = (orderId: string, nextState: OrderSocketState) => {
@@ -205,13 +250,14 @@ export default function App() {
 
     return () => {
       isCleanedUp = true;
+      clearStatusRetryTimeout();
       sockets.forEach(socket => {
         if (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN) {
           socket.close(1000, 'Switching screen');
         }
       });
     };
-  }, [currentScreen, createdOrders, statusRetryKey]);
+  }, [currentScreen, createdOrders, statusRetryAttempt, statusRetryKey]);
 
   const handleRetryMenuLoad = () => {
     setMenuRefreshKey(prev => prev + 1);
@@ -259,6 +305,7 @@ export default function App() {
       setStatusConnectionState('idle');
       setStatusConnectionMessage(null);
       setStatusRetryKey(0);
+      setStatusRetryAttempt(0);
       handleFlowEvent({ type: 'SUBMIT_SUCCESS' });
     } catch (error: unknown) {
       setCreateOrderError(
@@ -273,7 +320,16 @@ export default function App() {
   };
 
   const handleRetryStatus = () => {
-    setStatusRetryKey(prev => prev + 1);
+    if (!canRetryStatusStream(statusRetryAttempt)) {
+      setStatusConnectionMessage(STATUS_STREAM_UNAVAILABLE_MESSAGE);
+      clearStatusRetryTimeout();
+      return;
+    }
+    clearStatusRetryTimeout();
+    statusRetryTimeoutRef.current = window.setTimeout(() => {
+      setStatusRetryAttempt(prev => prev + 1);
+      setStatusRetryKey(prev => prev + 1);
+    }, nextRetryDelayMs(statusRetryAttempt));
   };
 
   const renderScreen = () => {
@@ -316,6 +372,7 @@ export default function App() {
             orderStatusById={orderStatusById}
             statusConnectionState={statusConnectionState}
             statusConnectionMessage={statusConnectionMessage}
+            canRetryStatus={canRetryStatusStream(statusRetryAttempt)}
             onRetryStatus={handleRetryStatus}
             onAddMore={() => handleFlowEvent({ type: 'SUPPLEMENT_ORDER' })}
             onPay={() => handleFlowEvent({ type: 'GO_PAYMENT' })}
@@ -336,6 +393,7 @@ export default function App() {
               setCreateOrderError(null);
               setStatusConnectionState('idle');
               setStatusConnectionMessage(null);
+              setStatusRetryAttempt(0);
             }}
           />
         );
