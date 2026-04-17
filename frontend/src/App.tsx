@@ -61,6 +61,7 @@ function getStatusConnectionMessage(state: StatusConnectionState): string | null
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('Welcome');
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [submittedCart, setSubmittedCart] = useState<CartItem[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isMenuLoading, setIsMenuLoading] = useState(false);
   const [menuLoadError, setMenuLoadError] = useState<string | null>(null);
@@ -217,6 +218,8 @@ export default function App() {
     try {
       const created = await createOrder(payload);
       setCreatedOrders(created);
+      setSubmittedCart(cart);
+      setCart([]);
       setOrderStatusById({});
       setStatusConnectionState('idle');
       setStatusConnectionMessage(null);
@@ -272,7 +275,7 @@ export default function App() {
       case 'Success':
         return (
           <SuccessScreen
-            cart={cart}
+            cart={submittedCart}
             createdOrders={createdOrders}
             orderStatusById={orderStatusById}
             statusConnectionState={statusConnectionState}
@@ -285,11 +288,13 @@ export default function App() {
       case 'Payment':
         return (
           <PaymentScreen
-            cart={cart}
+            cart={submittedCart}
+            createdOrders={createdOrders}
             onBack={() => setCurrentScreen('Success')}
             onConfirm={() => {
               setCurrentScreen('Welcome');
               setCart([]);
+              setSubmittedCart([]);
               setCreatedOrders([]);
               setOrderStatusById({});
               setCreateOrderError(null);

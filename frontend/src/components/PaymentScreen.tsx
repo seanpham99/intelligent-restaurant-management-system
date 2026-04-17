@@ -1,25 +1,36 @@
 import { useState } from 'react';
 import { X, CreditCard, Banknote, Landmark } from 'lucide-react';
 import Layout from './Layout';
-import { CartItem } from '../types';
+import { CartItem, OrderCreateResponse } from '../types';
 import { TAX_RATE, SERVICE_CHARGE_RATE } from '../constants';
 
 interface PaymentScreenProps {
   cart: CartItem[];
+  createdOrders: OrderCreateResponse[];
   onBack: () => void;
   onConfirm: () => void;
 }
 
 type PaymentMethod = 'CASH' | 'TRANSFER' | 'CARD';
 
-export default function PaymentScreen({ cart, onBack, onConfirm }: PaymentScreenProps) {
+export default function PaymentScreen({ cart, createdOrders, onBack, onConfirm }: PaymentScreenProps) {
   const [method, setMethod] = useState<PaymentMethod>('TRANSFER');
 
-  // Using mock prices in USD for this screen as per the reference image
-  const subtotal = 105.00;
+  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const tax = subtotal * TAX_RATE;
   const serviceCharge = subtotal * SERVICE_CHARGE_RATE;
   const total = subtotal + tax + serviceCharge;
+  const hasMixedCurrencies = new Set(cart.map(item => item.currency)).size > 1;
+  const currency = cart[0]?.currency ?? 'VND';
+  const currencySuffix = hasMixedCurrencies ? '' : ` ${currency}`;
+  const orderReference = createdOrders.length > 0
+    ? `#${createdOrders[0].id.slice(0, 8).toUpperCase()}`
+    : 'N/A';
+
+  const formatAmount = (value: number) => value.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
 
   return (
     <Layout className="bg-background">
@@ -45,45 +56,42 @@ export default function PaymentScreen({ cart, onBack, onConfirm }: PaymentScreen
           </div>
 
           <div className="space-y-4 font-body text-sm">
-            {/* Mocked items for the bill as per image */}
-            <div className="flex justify-between items-baseline group">
-              <span className="font-display italic text-ink text-lg">Truffle Risotto</span>
-              <div className="flex-grow border-b border-dotted border-border-subtle mx-4 opacity-20"></div>
-              <p className="text-ink/60">$28.00</p>
-            </div>
-            
-            <div className="flex justify-between items-baseline group">
-              <span className="font-display italic text-ink text-lg">Wagyu Ribeye</span>
-              <div className="flex-grow border-b border-dotted border-border-subtle mx-4 opacity-20"></div>
-              <p className="text-ink/60">$65.00</p>
-            </div>
-
-            <div className="flex justify-between items-baseline group">
-              <span className="font-display italic text-ink text-lg">Charred Asparagus</span>
-              <div className="flex-grow border-b border-dotted border-border-subtle mx-4 opacity-20"></div>
-              <p className="text-ink/60">$12.00</p>
-            </div>
+            {cart.length === 0 ? (
+              <div className="border border-border-subtle p-4 text-center">
+                <p className="font-body text-xs text-ink/50">No submitted order to settle yet.</p>
+              </div>
+            ) : (
+              cart.map(item => (
+                <div key={item.id} className="flex justify-between items-baseline group">
+                  <span className="font-display italic text-ink text-lg">x{item.quantity} {item.name}</span>
+                  <div className="flex-grow border-b border-dotted border-border-subtle mx-4 opacity-20"></div>
+                  <p className="text-ink/60">
+                    {formatAmount(item.price * item.quantity)} {item.currency}
+                  </p>
+                </div>
+              ))
+            )}
 
             {/* Spacer */}
             <div className="pt-8">
               <div className="flex justify-between items-center text-[10px] uppercase tracking-widest text-ink/30 mb-2">
                 <span>Subtotal</span>
-                <span>${subtotal.toFixed(2)}</span>
+                <span>{formatAmount(subtotal)}{currencySuffix}</span>
               </div>
               <div className="flex justify-between items-center text-[10px] uppercase tracking-widest text-ink/30 mb-2">
                 <span>Tax (8.5%)</span>
-                <span>${tax.toFixed(2)}</span>
+                <span>{formatAmount(tax)}{currencySuffix}</span>
               </div>
               <div className="flex justify-between items-center text-[10px] uppercase tracking-widest text-ink/30">
                 <span>Service (18%)</span>
-                <span>${serviceCharge.toFixed(2)}</span>
+                <span>{formatAmount(serviceCharge)}{currencySuffix}</span>
               </div>
             </div>
 
             {/* Total */}
             <div className="pt-8 mt-4 border-t border-border-subtle flex justify-between items-end">
               <p className="editorial-header text-4xl text-ink">Total Due</p>
-              <p className="font-display italic text-4xl text-primary">${total.toFixed(2)}</p>
+              <p className="font-display italic text-4xl text-primary">{formatAmount(total)}{currencySuffix}</p>
             </div>
           </div>
         </section>
@@ -166,7 +174,7 @@ export default function PaymentScreen({ cart, onBack, onConfirm }: PaymentScreen
               </div>
             </div>
             <div className="border border-border-subtle px-4 py-2">
-              <p className="font-body text-[8px] uppercase tracking-[0.3em] text-ink/40">Ref: #TBL5-992A</p>
+              <p className="font-body text-[8px] uppercase tracking-[0.3em] text-ink/40">Ref: {orderReference}</p>
             </div>
           </section>
         )}
@@ -181,7 +189,8 @@ export default function PaymentScreen({ cart, onBack, onConfirm }: PaymentScreen
         <div className="mx-auto w-full max-w-5xl">
           <button 
             onClick={onConfirm}
-            className="w-full md:w-auto md:px-20 h-14 bg-primary text-background font-body font-bold text-xs uppercase tracking-widest rounded-full flex items-center justify-center transition-all shadow-xl hover:brightness-110 active:scale-[0.98]"
+            disabled={cart.length === 0}
+            className="w-full md:w-auto md:px-20 h-14 bg-primary disabled:opacity-60 disabled:cursor-not-allowed text-background font-body font-bold text-xs uppercase tracking-widest rounded-full flex items-center justify-center transition-all shadow-xl hover:brightness-110 active:scale-[0.98]"
           >
             Finalize Settlement
           </button>

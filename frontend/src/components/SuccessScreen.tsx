@@ -117,9 +117,6 @@ export default function SuccessScreen({
                           {status}
                         </span>
                       </div>
-                      <p className="font-body text-xs text-ink/55 mt-2">
-                        {statusEvent?.description ?? 'Waiting for status update...'}
-                      </p>
                     </li>
                   );
                 })}
