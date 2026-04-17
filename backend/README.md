@@ -34,12 +34,15 @@ curl --request GET \
 # Response:
 [
   {
-    "id": 1,
+    "id": "1",
     "name": "Gỏi Ngó Sen Tôm Thịt",
     "description": "Gỏi thanh mát, tôm thịt đậm đà",
     "price": 115000.0,
-    "type_name": "Khai vị",
-    "image_base64": "utf-8 encoded base64 image"
+    "category": "Appetizers",
+    "currency": "VND",
+    "popular": false,
+    "soldOut": false,
+    "imageUrl": null
   },
   ...
 ]
@@ -78,7 +81,7 @@ curl --request POST \
   --header 'content-type: application/json' \
   --data '[
   {
-    "item_id": 1,
+    "item_id": "1",
     "table_id": 0,
     "amount": 1
   }
@@ -87,7 +90,7 @@ curl --request POST \
 # Response
 [
   {
-    "item_id": 1,
+    "item_id": "1",
     "table_id": 0,
     "amount": 1.0,
     "id": "15bdafa4-0203-4664-a9ab-2570ba1e25f3"
@@ -105,8 +108,8 @@ Notes: about the `table_id` field, just keep it at 0 (Không xác định) for s
     1. Open a normal websocket to the server via, for example, `ws://localhost:8000/order/status`.
     2. Send a json object as message: `{"order_id": "<id obtained from the /order/create endpoint>"}`
     3. The websocket should receive updating messages of the following format:
-    `{"status": int, "description": str}`
-    If the `status == 3`, that means the websocket ends and the order is completed.
+    `{"order_id": str, "status": str, "description": str}`
+    If the `status == "DONE"`, that means the websocket ends and the order is completed.
 - Example websocket messages:
 
 ![Example websocket messages](images/image.png)
