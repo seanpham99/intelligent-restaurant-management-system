@@ -110,3 +110,37 @@ Notes: about the `table_id` field, just keep it at 0 (Không xác định) for s
 - Example websocket messages:
 
 ![Example websocket messages](images/image.png)
+
+# Testing
+## Test Framework: pytest
+
+## Test Covered:
+1. Order API/Websocket flows: `backend/tests/test_order_router.py:80`
+2. HTTP client lifecycle: `backend/tests/test_httpx_client.py:6`
+3. MQTT queue lifecycle and invalid device path: `backend/tests/test_mqtt_queue.py:8`
+4. All SQLAlchemy models: `backend/tests/test_models.py:1`
+
+## Happy Path Test:
+1. Create order successfully: `backend/tests/test_order_router.py:80`
+2. WebSocket order status success: `backend/tests/test_order_router.py:129`
+3. WebSocket order status v2 success: `backend/tests/test_order_router.py:155`
+4. HTTPX client init/close success: `backend/tests/test_httpx_client.py:6`
+5. MQTT client init/close and standalone creation success: `backend/tests/test_mqtt_queue.py:8`, `backend/tests/test_mqtt_queue.py:42`
+
+## Edge Case Tests:
+1. Empty order list: `backend/tests/test_order_router.py:104`
+2. Invalid device path (MQTT publish failure / client not initialized): `backend/tests/test_order_router.py:173`, `backend/tests/test_mqtt_queue.py:32`
+3. Null values (invalid payload with item_id=None): `backend/tests/test_order_router.py:118`
+4. Empty order_id websocket input: `backend/tests/test_order_router.py:144`
+
+## Install Test Dependencies
+Before running the test command on a fresh checkout, install the test-only packages required by the command and `pytest.ini`:
+
+`python3 -m pip install pytest pytest-asyncio pytest-cov`
+
+## Test Command:
+`python3 -m pytest backend/tests --cov=routers.order --cov=httpx_client --cov=mqtt_queue --cov=model --cov-report=term-missing`
+## Pytest configuration used
+The repository currently uses the explicit pytest command above rather than a committed `pytest.ini` file.
+If you want the same behavior locally, run tests from `backend/tests`. If a shared default configuration is needed later,
+add a real `pytest.ini` to the repository instead of documenting it here as if it already exists.
