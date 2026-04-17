@@ -82,13 +82,13 @@ def test_create_order_happy_path(app_factory):
     app = app_factory(mqtt)
     client = TestClient(app)
 
-    payload = [{"item_id": 1, "table_id": 5, "amount": 2.0}]
+    payload = [{"item_id": "1", "table_id": 5, "amount": 2.0}]
     response = client.post("/order/create", json=payload)
 
     assert response.status_code == 200
     body = response.json()
     assert len(body) == 1
-    assert body[0]["item_id"] == 1
+    assert body[0]["item_id"] == "1"
     assert body[0]["table_id"] == 5
     assert body[0]["amount"] == 2.0
     assert isinstance(body[0]["id"], str) and body[0]["id"]
@@ -98,7 +98,7 @@ def test_create_order_happy_path(app_factory):
     assert topic == "order/queue"
     assert qos == 1
     decoded = json.loads(published_payload.decode("utf-8"))
-    assert decoded[0]["item_id"] == 1
+    assert decoded[0]["item_id"] == "1"
 
 
 def test_create_order_empty_order_list(app_factory):
@@ -127,18 +127,23 @@ def test_create_order_null_value_rejected(app_factory):
 
 
 def test_order_status_websocket_happy_path(app_factory):
-    done_payload = json.dumps({"status": 3, "description": "done"}).encode("utf-8")
-    mqtt = DummyMQTT(messages=[done_payload])
-    app = app_factory(mqtt)
-    client = TestClient(app)
+    done_payload = json.dumps(
+        {"order_id": "abc-123", "status": "DONE", "description": "DONE"}
+    ).encode("utf-8")
+    app = app_factory(DummyMQTT())
+    standalone = DummyStandaloneMQTT([done_payload])
 
-    with client.websocket_connect("/order/status") as ws:
-        ws.send_json({"order_id": "abc-123"})
-        msg = ws.receive_json()
+    with patch("routers.order.create_standalone_mqtt", return_value=standalone):
+        client = TestClient(app)
+        with client.websocket_connect("/order/status") as ws:
+            ws.send_json({"order_id": "abc-123"})
+            msg = ws.receive_json()
 
-    assert msg["status"] == 3
-    assert mqtt.subscriptions == ["order/status/abc-123"]
-    assert mqtt.unsubscriptions == ["order/status/abc-123"]
+    assert msg["order_id"] == "abc-123"
+    assert msg["status"] == "DONE"
+    assert standalone.entered is True
+    assert standalone.exited is True
+    assert standalone.subscriptions == ["order/status/abc-123"]
 
 
 def test_order_status_websocket_empty_order_id_closes(app_factory):
@@ -155,7 +160,9 @@ def test_order_status_websocket_empty_order_id_closes(app_factory):
 def test_order_status2_websocket_happy_path(app_factory):
     mqtt = DummyMQTT()
     app = app_factory(mqtt)
-    done_payload = json.dumps({"status": 3, "description": "done"}).encode("utf-8")
+    done_payload = json.dumps(
+        {"order_id": "xyz-9", "status": "DONE", "description": "DONE"}
+    ).encode("utf-8")
     standalone = DummyStandaloneMQTT([done_payload])
 
     with patch("routers.order.create_standalone_mqtt", return_value=standalone):
@@ -164,10 +171,46 @@ def test_order_status2_websocket_happy_path(app_factory):
             ws.send_json({"order_id": "xyz-9"})
             msg = ws.receive_json()
 
-    assert msg["status"] == 3
+    assert msg["order_id"] == "xyz-9"
+    assert msg["status"] == "DONE"
     assert standalone.entered is True
     assert standalone.exited is True
     assert standalone.subscriptions == ["order/status/xyz-9"]
+
+
+def test_order_status_websocket_ignores_other_order_events_before_closing(app_factory):
+    wrong_order_done_payload = json.dumps(
+        {"order_id": "other-order", "status": "DONE", "description": "DONE"}
+    ).encode("utf-8")
+    right_order_processing_payload = json.dumps(
+        {"order_id": "abc-123", "status": "PROCESSING", "description": "PROCESSING"}
+    ).encode("utf-8")
+    right_order_done_payload = json.dumps(
+        {"order_id": "abc-123", "status": "DONE", "description": "DONE"}
+    ).encode("utf-8")
+    standalone = DummyStandaloneMQTT(
+        [
+            wrong_order_done_payload,
+            right_order_processing_payload,
+            right_order_done_payload,
+        ]
+    )
+    app = app_factory(DummyMQTT())
+
+    with patch("routers.order.create_standalone_mqtt", return_value=standalone):
+        client = TestClient(app)
+        with client.websocket_connect("/order/status") as ws:
+            ws.send_json({"order_id": "abc-123"})
+            processing_msg = ws.receive_json()
+            done_msg = ws.receive_json()
+
+    assert processing_msg["order_id"] == "abc-123"
+    assert processing_msg["status"] == "PROCESSING"
+    assert done_msg["order_id"] == "abc-123"
+    assert done_msg["status"] == "DONE"
+    assert standalone.entered is True
+    assert standalone.exited is True
+    assert standalone.subscriptions == ["order/status/abc-123"]
 
 
 def test_create_order_invalid_device_mqtt_publish_failure(app_factory):
@@ -175,7 +218,7 @@ def test_create_order_invalid_device_mqtt_publish_failure(app_factory):
     app = app_factory(mqtt)
     client = TestClient(app)
 
-    payload = [{"item_id": 10, "table_id": 2, "amount": 1.0}]
+    payload = [{"item_id": "10", "table_id": 2, "amount": 1.0}]
     response = client.post("/order/create", json=payload)
 
     assert response.status_code == 500
