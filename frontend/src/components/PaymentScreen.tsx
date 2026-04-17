@@ -3,17 +3,27 @@ import { X, CreditCard, Banknote, Landmark } from 'lucide-react';
 import Layout from './Layout';
 import { CartItem, OrderCreateResponse } from '../types';
 import { TAX_RATE, SERVICE_CHARGE_RATE } from '../constants';
+import { SettlementResult } from '../flow/payment-guards';
 
 interface PaymentScreenProps {
   cart: CartItem[];
   createdOrders: OrderCreateResponse[];
+  settlementGuard: SettlementResult;
+  settlementGuardMessage: string | null;
   onBack: () => void;
   onConfirm: () => void;
 }
 
 type PaymentMethod = 'CASH' | 'TRANSFER' | 'CARD';
 
-export default function PaymentScreen({ cart, createdOrders, onBack, onConfirm }: PaymentScreenProps) {
+export default function PaymentScreen({
+  cart,
+  createdOrders,
+  settlementGuard,
+  settlementGuardMessage,
+  onBack,
+  onConfirm,
+}: PaymentScreenProps) {
   const [method, setMethod] = useState<PaymentMethod>('TRANSFER');
 
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -187,9 +197,14 @@ export default function PaymentScreen({ cart, createdOrders, onBack, onConfirm }
       {/* Sticky Checkout Strip */}
       <div className="fixed inset-x-0 bottom-0 md:sticky md:bottom-0 backdrop-blur-md px-4 sm:px-6 md:px-12 py-4 z-50 border-t border-border-subtle bg-background/90">
         <div className="mx-auto w-full max-w-5xl">
+          {settlementGuardMessage && (
+            <p className="mb-3 font-body text-[10px] uppercase tracking-widest text-ink/50">
+              {settlementGuardMessage}
+            </p>
+          )}
           <button 
             onClick={onConfirm}
-            disabled={cart.length === 0}
+            disabled={!settlementGuard.ok}
             className="w-full md:w-auto md:px-20 h-14 bg-primary disabled:opacity-60 disabled:cursor-not-allowed text-background font-body font-bold text-xs uppercase tracking-widest rounded-full flex items-center justify-center transition-all shadow-xl hover:brightness-110 active:scale-[0.98]"
           >
             Finalize Settlement

@@ -15,6 +15,7 @@ import { fetchMenuItems } from './api/menu';
 import { createOrder, subscribeOrderStatus } from './api/order';
 import { transition, FlowEvent, FlowState } from './flow/session-machine';
 import { buildCartFingerprint, canSubmitCart, isDuplicatePendingSubmission } from './flow/order-guards';
+import { canFinalizeSettlement } from './flow/payment-guards';
 import {
   STATUS_STREAM_UNAVAILABLE_MESSAGE,
   canRetryStatusStream,
@@ -62,6 +63,17 @@ function getStatusConnectionMessage(state: StatusConnectionState): string | null
       return 'Live status disconnected. Retry to reconnect.';
     default:
       return null;
+  }
+}
+
+function getSettlementGuardMessage(reason: 'EMPTY_ORDER' | 'ALREADY_SETTLED'): string {
+  switch (reason) {
+    case 'EMPTY_ORDER':
+      return 'No submitted order available for settlement.';
+    case 'ALREADY_SETTLED':
+      return 'This session has already been settled.';
+    default:
+      return 'Unable to finalize settlement.';
   }
 }
 
@@ -382,12 +394,30 @@ export default function App() {
           />
         );
       case 'Payment':
+        const settlementGuard = canFinalizeSettlement({
+          submittedItems: submittedCart.length,
+          paymentSettled: flowState.paymentSettled,
+        });
+        const settlementGuardMessage = settlementGuard.ok === false
+          ? getSettlementGuardMessage(settlementGuard.reason)
+          : null;
+
         return (
           <PaymentScreen
             cart={submittedCart}
             createdOrders={createdOrders}
+            settlementGuard={settlementGuard}
+            settlementGuardMessage={settlementGuardMessage}
             onBack={() => handleFlowEvent({ type: 'BACK_TO_SUCCESS' })}
             onConfirm={() => {
+              const finalizeGuard = canFinalizeSettlement({
+                submittedItems: submittedCart.length,
+                paymentSettled: flowState.paymentSettled,
+              });
+              if (finalizeGuard.ok === false) {
+                setStatusConnectionMessage(getSettlementGuardMessage(finalizeGuard.reason));
+                return;
+              }
               handleFlowEvent({ type: 'SETTLE_PAYMENT' });
               setCart([]);
               setSubmittedCart([]);
