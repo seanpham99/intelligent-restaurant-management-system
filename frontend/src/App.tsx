@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { MenuItem, CartItem, OrderCreateResponse, OrderStatusEvent } from './types';
 import WelcomeScreen from './components/WelcomeScreen';
@@ -14,6 +14,7 @@ import PaymentScreen from './components/PaymentScreen';
 import { fetchMenuItems } from './api/menu';
 import { createOrder, subscribeOrderStatus } from './api/order';
 import { transition, FlowEvent, FlowState } from './flow/session-machine';
+import { buildCartFingerprint, canSubmitCart, isDuplicatePendingSubmission } from './flow/order-guards';
 
 type StatusConnectionState =
   | 'idle'
@@ -77,6 +78,7 @@ export default function App() {
   const [statusConnectionState, setStatusConnectionState] = useState<StatusConnectionState>('idle');
   const [statusConnectionMessage, setStatusConnectionMessage] = useState<string | null>(null);
   const [statusRetryKey, setStatusRetryKey] = useState(0);
+  const pendingSubmissionFingerprintsRef = useRef<Set<string>>(new Set());
   const currentScreen = flowState.screen;
 
   const handleFlowEvent = (event: FlowEvent): void => {
@@ -216,11 +218,29 @@ export default function App() {
   };
 
   const handleSubmitOrder = async () => {
-    if (cart.length === 0) {
-      setCreateOrderError('Your cart is empty. Please add at least one item before submitting.');
+    const cartSnapshot = cart.map(item => ({ id: item.id, quantity: item.quantity }));
+    const fingerprint = buildCartFingerprint(cartSnapshot);
+
+    if (isDuplicatePendingSubmission(fingerprint, pendingSubmissionFingerprintsRef.current)) {
+      setCreateOrderError('This order is already being submitted. Please wait.');
       return;
     }
 
+    const submitGuard = canSubmitCart(
+      cartSnapshot,
+      menuItems.map(item => ({ id: item.id, soldOut: item.soldOut })),
+    );
+
+    if (submitGuard.ok === false) {
+      setCreateOrderError(
+        submitGuard.reason === 'EMPTY_CART'
+          ? 'Your cart is empty. Please add at least one item before submitting.'
+          : 'Some selected items are no longer available. Please review your cart.',
+      );
+      return;
+    }
+
+    pendingSubmissionFingerprintsRef.current.add(fingerprint);
     setIsCreatingOrder(true);
     setCreateOrderError(null);
 
@@ -247,6 +267,7 @@ export default function App() {
           : 'Order submission failed. Please check your connection and try again.',
       );
     } finally {
+      pendingSubmissionFingerprintsRef.current.delete(fingerprint);
       setIsCreatingOrder(false);
     }
   };

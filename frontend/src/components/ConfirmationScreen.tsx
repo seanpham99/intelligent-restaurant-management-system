@@ -88,7 +88,7 @@ export default function ConfirmationScreen({
         </p>
         {submitError && (
           <div className="border border-error-border bg-error-surface p-4 text-center">
-            <p className="meta-tag text-error mb-1">Submission failed</p>
+            <p className="meta-tag text-error mb-1">Unable to submit order</p>
             <p className="font-body text-xs text-error/90">{submitError}</p>
           </div>
         )}
