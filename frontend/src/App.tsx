@@ -79,13 +79,14 @@ export default function App() {
   const [statusRetryKey, setStatusRetryKey] = useState(0);
   const currentScreen = flowState.screen;
 
-  const handleFlowEvent = (event: FlowEvent): boolean => {
-    const result = transition(flowState, event);
-    if (!result.ok) {
-      return false;
-    }
-    setFlowState(result.state);
-    return true;
+  const handleFlowEvent = (event: FlowEvent): void => {
+    setFlowState(prev => {
+      const result = transition(prev, event);
+      if (!result.ok) {
+        return prev;
+      }
+      return result.state;
+    });
   };
 
   const handleUpdateCart = (item: MenuItem, delta: number) => {
@@ -304,13 +305,9 @@ export default function App() {
           <PaymentScreen
             cart={submittedCart}
             createdOrders={createdOrders}
-            onBack={() => {
-              setFlowState(prev => ({ ...prev, screen: 'Success' }));
-            }}
+            onBack={() => handleFlowEvent({ type: 'BACK_TO_SUCCESS' })}
             onConfirm={() => {
-              if (!handleFlowEvent({ type: 'SETTLE_PAYMENT' })) {
-                return;
-              }
+              handleFlowEvent({ type: 'SETTLE_PAYMENT' });
               setCart([]);
               setSubmittedCart([]);
               setCreatedOrders([]);

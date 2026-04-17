@@ -1,4 +1,5 @@
-export type Screen = 'Welcome' | 'Menu' | 'Confirmation' | 'Success' | 'Payment';
+import type { Screen } from '../types';
+export type { Screen } from '../types';
 
 export type FlowError = 'INVALID_TRANSITION' | 'SESSION_CLOSED';
 
@@ -13,6 +14,7 @@ export type FlowEvent =
   | { type: 'SUBMIT_SUCCESS' }
   | { type: 'SUPPLEMENT_ORDER' }
   | { type: 'GO_PAYMENT' }
+  | { type: 'BACK_TO_SUCCESS' }
   | { type: 'SETTLE_PAYMENT' };
 
 type TransitionResult =
@@ -67,6 +69,11 @@ export function transition(state: FlowState, event: FlowEvent): TransitionResult
     case 'GO_PAYMENT':
       if (state.screen === 'Success') {
         return successTransition({ screen: 'Payment', paymentSettled: state.paymentSettled });
+      }
+      return invalidTransition(state);
+    case 'BACK_TO_SUCCESS':
+      if (state.screen === 'Payment') {
+        return successTransition({ screen: 'Success', paymentSettled: state.paymentSettled });
       }
       return invalidTransition(state);
     case 'SETTLE_PAYMENT':

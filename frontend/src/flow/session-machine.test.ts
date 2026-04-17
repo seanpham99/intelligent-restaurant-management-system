@@ -33,3 +33,13 @@ test('SUPPLEMENT_ORDER blocked when paymentSettled=true (SESSION_CLOSED)', () =>
     assert.deepEqual(result.state, initialState);
   }
 });
+
+test('Payment -> Success back allowed', () => {
+  const initialState: FlowState = { screen: 'Payment', paymentSettled: false };
+  const result = transition(initialState, { type: 'BACK_TO_SUCCESS' });
+
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.deepEqual(result.state, { screen: 'Success', paymentSettled: false });
+  }
+});
