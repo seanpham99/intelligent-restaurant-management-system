@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from typing import List, Optional
 
 class BaseDTO(BaseModel):
@@ -19,7 +19,7 @@ class PortionResponse(BaseDTO):
     remaining_portions: int
 
 class OrderInput(BaseDTO):
-    item_id: str
+    item_id: str = Field(pattern=r"^\d+$")
     table_id: int
     amount: float  
 
