@@ -17,7 +17,7 @@
 - Run locally: `cd frontend && npm run dev`
 - Build: `cd frontend && npm run build`
 - Lint/type-check: `cd frontend && npm run lint`
-- Tests: No `test` script is configured in `frontend/package.json`, so there is currently no full-suite or single-test command.
+- Tests: Flow tests are available via `cd frontend && npm run test:flow` (`tsx --test src/flow/**/*.test.ts`). No top-level `test` script is configured for a full frontend test suite.
 
 ## High-level architecture
 

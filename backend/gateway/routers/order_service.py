@@ -22,7 +22,7 @@ ORDER_SERVICE_URL = f"http://{ORDER_SERVICE_HOST}:8000"
 
 @router.websocket("/status")
 async def gateway_order_proxy(websocket: WebSocket):
-    await start_proxy(websocket, ORDER_SERVICE_WS_URL + '/order/status')
+    await start_proxy(websocket, ORDER_SERVICE_WS_URL + '/order/status2')
 
 @router.post('/create')
 async def create_order(

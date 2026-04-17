@@ -2,7 +2,6 @@ import { motion } from 'motion/react';
 import { ArrowLeft } from 'lucide-react';
 import Layout from './Layout';
 import { CartItem } from '../types';
-import { VAT_RATE } from '../constants';
 import { canLeaveConfirmation } from '../flow/confirmation-navigation';
 
 interface ConfirmationScreenProps {

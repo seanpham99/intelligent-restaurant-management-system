@@ -19,7 +19,7 @@ class PortionResponse(BaseDTO):
     remaining_portions: int
 
 class OrderInput(BaseDTO):
-    item_id: str = Field(pattern=r"^\d+$")
+    item_id: str = Field(min_length=1)
     table_id: int
     amount: float  
 
