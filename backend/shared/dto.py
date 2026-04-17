@@ -1,27 +1,35 @@
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from typing import List, Optional
 
 class BaseDTO(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class ItemResponse(BaseDTO):
-    id: int
+    id: str
     name: str
     description: str
     price: float
-    type_name: str
-    image_base64: str
+    category: str
+    currency: str
+    popular: bool
+    soldOut: bool
+    imageUrl: Optional[str] = None
 
 class PortionResponse(BaseDTO):
     remaining_portions: int
 
 class OrderInput(BaseDTO):
-    item_id: int
+    item_id: str = Field(min_length=1)
     table_id: int
     amount: float  
 
 class OrderResponse(OrderInput):
     id: Optional[str] = None
+
+class OrderStatusEvent(BaseDTO):
+    order_id: str
+    status: str
+    description: str
 
 class OrderIdResponse(BaseDTO):
     id: str

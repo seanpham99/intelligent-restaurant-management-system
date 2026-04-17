@@ -56,85 +56,80 @@ async def create_order(
 
 @router.websocket("/status")
 async def order_status_websocket(
-    websocket: WebSocket, 
-    mqtt: aiomqtt.Client = Depends(get_global_mqtt)
+    websocket: WebSocket
 ):
-    # 1. Accept the WebSocket connection
     await websocket.accept()
-    
-    topic = None
+
     try:
-        # 2. Receive the initial order_id from the client
-        # Expected format: {"order_id": "12345"}
         data = await websocket.receive_json()
         order_id = data.get("order_id")
         logger.info(f'data from websocket: {data}')
-        
+
         if not order_id:
-            await websocket.close(code=1003) # Unsupported Data
+            await websocket.close(code=1003)
             return
 
+        client = create_standalone_mqtt(prefix="order_track")
         topic = f"order/status/{order_id}"
-        logger.info(f"WebSocket client tracking order: {order_id}")
+        async with client:
+            await client.subscribe(topic)
+            logger.info(f"WebSocket client tracking order: {order_id}")
 
-        # 3. Subscribe to the MQTT topic
-        await mqtt.subscribe(topic)
-        
-        # 4. Listen for MQTT messages and relay them to WebSocket
-        async for message in mqtt.messages:
-            payload_str = message.payload.decode()
-            payload_data = json.loads(payload_str)
-            
-            # Send data to the frontend
-            await websocket.send_json(payload_data)
-            logger.debug(f"Relayed MQTT status for {order_id}: {payload_data}")
+            async for message in client.messages:
+                payload_data = json.loads(message.payload.decode())
+                if payload_data.get("order_id") != order_id:
+                    logger.warning(
+                        "Ignoring status event for mismatched order_id. "
+                        f"expected={order_id} actual={payload_data.get('order_id')}"
+                    )
+                    continue
 
-            # 5. Check for the termination condition {"status": 3}
-            if payload_data.get("status") == 3:
-                logger.info(f"Order {order_id} reached final status. Closing connection.")
-                break
+                await websocket.send_json(payload_data)
+                logger.debug(f"Relayed MQTT status for {order_id}: {payload_data}")
+
+                if payload_data.get("status") == ORDER_STATUS.DONE.name:
+                    logger.info(f"Order {order_id} reached final status. Closing connection.")
+                    break
 
     except WebSocketDisconnect:
         logger.info("WebSocket client disconnected.")
     except Exception as e:
         logger.error(f"Error in order status bridge: {e}")
     finally:
-        if topic:
-            await mqtt.unsubscribe(topic)
-        # 6. Ensure the WebSocket is closed if the loop breaks
         try:
             await websocket.close()
         except:
             pass
 
 @router.websocket("/status2")
-async def order_status_websocket(websocket: WebSocket):
+async def order_status_websocket_standalone(websocket: WebSocket):
     await websocket.accept()
     
-    # 1. Create the isolated client using our factory
     client = create_standalone_mqtt(prefix="order_track")
     
     try:
-        # Receive setup data from client
         data = await websocket.receive_json()
         order_id = data.get("order_id")
+        if not order_id:
+            await websocket.close(code=1003)
+            return
         topic = f"order/status/{order_id}"
 
-        # 2. Use 'async with' to manage the unique connection
         async with client:
             await client.subscribe(topic)
             
             async for message in client.messages:
                 payload = json.loads(message.payload.decode())
+                if payload.get("order_id") != order_id:
+                    continue
                 await websocket.send_json(payload)
 
-                if payload.get("status") == ORDER_STATUS.DONE.value:
+                if payload.get("status") == ORDER_STATUS.DONE.name:
                     break
 
     except WebSocketDisconnect:
         pass 
     finally:
-        # Client automatically disconnects thanks to 'async with'
         try:
             await websocket.close()
         except:

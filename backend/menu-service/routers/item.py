@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 # from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy import select, text, func, and_, cast, BigInteger
+from sqlalchemy import select, text, func, and_, cast, BigInteger, case, String
 import redis
 
 from database import get_db
@@ -24,14 +24,25 @@ class FetchListItemsHandler(BaseDataHandler):
     def handle(self):
         db = self.db
         try:
+            category_expr = case(
+                (ItemType.name == "Khai vị", "Appetizers"),
+                (ItemType.name == "Chính", "Main Course"),
+                (ItemType.name == "Đồ uống", "Drinks"),
+                (ItemType.name == "Tráng miệng", "Desserts"),
+                else_="Appetizers",
+            ).label("category")
+
             stmt = (
                 select(
-                    MenuItem.id,
+                    cast(MenuItem.id, String).label("id"),
                     MenuItem.name,
                     MenuItem.description,
                     MenuItem.price,
-                    MenuItem.image_base64,
-                    ItemType.name.label("type_name")
+                    category_expr,
+                    MenuItem.currency,
+                    MenuItem.popular,
+                    MenuItem.sold_out.label("soldOut"),
+                    MenuItem.image_url.label("imageUrl"),
                 )
                 .join(ItemType, MenuItem.type_id == ItemType.id)
             )
@@ -55,7 +66,7 @@ async def list_items(
     db: Session = Depends(get_db)
     ) -> list[ItemResponse]:
     
-    CACHE_KEY = 'menu-service:list_items'
+    CACHE_KEY = 'menu-service:list_items:v2'
     handler = FetchListItemsHandler(db)
     data = get_cached_data(r, CACHE_KEY, handler, 300)
     return data

@@ -1,0 +1,119 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+
+  --ui-primary: #8f6a2e;
+  --ui-on-primary: #fffdf8;
+  --ui-page: #efe9de;
+  --ui-background: #f7f3eb;
+  --ui-ink: #1f1a15;
+  --ui-surface: #fffdfa;
+  --ui-surface-variant: #f3eee4;
+  --ui-on-surface: #1f1a15;
+  --ui-on-surface-variant: rgb(31 26 21 / 72%);
+  --ui-border-subtle: rgb(31 26 21 / 16%);
+
+  --ui-error: #a73535;
+  --ui-error-surface: #f8e8e8;
+  --ui-error-border: #e8bbbb;
+
+  --ui-status-queue: #8a5d16;
+  --ui-status-queue-surface: #fff4de;
+  --ui-status-queue-border: #efcf96;
+
+  --ui-status-done: #24683f;
+  --ui-status-done-surface: #e6f3ea;
+  --ui-status-done-border: #a9d5b7;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --ui-primary: #c5a059;
+    --ui-on-primary: #12100c;
+    --ui-page: #090909;
+    --ui-background: #0f0f0f;
+    --ui-ink: #f5f5f0;
+    --ui-surface: #161616;
+    --ui-surface-variant: #1e1e1e;
+    --ui-on-surface: #f5f5f0;
+    --ui-on-surface-variant: rgb(245 245 240 / 68%);
+    --ui-border-subtle: rgb(245 245 240 / 14%);
+
+    --ui-error: #ff8f8f;
+    --ui-error-surface: rgb(255 120 120 / 14%);
+    --ui-error-border: rgb(255 143 143 / 48%);
+
+    --ui-status-queue: #e7bf73;
+    --ui-status-queue-surface: rgb(231 191 115 / 14%);
+    --ui-status-queue-border: rgb(231 191 115 / 42%);
+
+    --ui-status-done: #8bd3a7;
+    --ui-status-done-surface: rgb(139 211 167 / 15%);
+    --ui-status-done-border: rgb(139 211 167 / 42%);
+  }
+}
+
+@theme {
+  --font-display: "Cormorant Garamond", serif;
+  --font-headline: "Cormorant Garamond", serif;
+  --font-body: "Inter", sans-serif;
+
+  --color-primary: var(--ui-primary);
+  --color-on-primary: var(--ui-on-primary);
+  --color-page: var(--ui-page);
+  --color-background: var(--ui-background);
+  --color-ink: var(--ui-ink);
+  --color-surface: var(--ui-surface);
+  --color-surface-variant: var(--ui-surface-variant);
+  --color-on-surface: var(--ui-on-surface);
+  --color-on-surface-variant: var(--ui-on-surface-variant);
+  --color-border-subtle: var(--ui-border-subtle);
+  --color-error: var(--ui-error);
+  --color-error-surface: var(--ui-error-surface);
+  --color-error-border: var(--ui-error-border);
+  --color-status-queue: var(--ui-status-queue);
+  --color-status-queue-surface: var(--ui-status-queue-surface);
+  --color-status-queue-border: var(--ui-status-queue-border);
+  --color-status-done: var(--ui-status-done);
+  --color-status-done-surface: var(--ui-status-done-surface);
+  --color-status-done-border: var(--ui-status-done-border);
+
+  --radius-lg: 4px;
+  --radius-xl: 8px;
+  --radius-full: 9999px;
+}
+
+@layer base {
+  body {
+    @apply font-body bg-background text-ink antialiased;
+  }
+}
+
+.vertical-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.ambient-shadow {
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+}
+
+.editorial-header {
+  @apply font-display italic leading-[0.9] tracking-tight;
+}
+
+.meta-tag {
+  @apply text-[10px] uppercase tracking-[0.3em] font-body font-semibold;
+}
