@@ -1,4 +1,4 @@
-from sqlalchemy import Column, BigInteger, String, Float, DateTime, ForeignKey, Text, MetaData
+from sqlalchemy import Column, BigInteger, String, Float, DateTime, ForeignKey, Text, MetaData, Boolean
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import func
 
@@ -67,6 +67,10 @@ class MenuItem(Base):
     description = Column(Text)
     price = Column(Float)
     image_base64 = Column(Text)
+    image_url = Column(Text)
+    currency = Column(String)
+    popular = Column(Boolean, default=False)
+    sold_out = Column(Boolean, default=False)
     
     item_type = relationship("ItemType")
 

@@ -5,12 +5,15 @@ class BaseDTO(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class ItemResponse(BaseDTO):
-    id: int
+    id: str
     name: str
     description: str
     price: float
-    type_name: str
-    image_base64: str
+    category: str
+    currency: str
+    popular: bool
+    soldOut: bool
+    imageUrl: Optional[str] = None
 
 class PortionResponse(BaseDTO):
     remaining_portions: int

@@ -96,7 +96,11 @@ create table if not exists public.menu_item (
 	name text,
 	description text,
 	price float8,
-	image_base64 text
+	image_base64 text,
+	image_url text,
+	currency text default 'VND',
+	popular boolean default false,
+	sold_out boolean default false
 );
 INSERT INTO public.menu_item (id, type_id, name, description, price, image_base64) VALUES
 -- Khai vị (Type ID = 1)
