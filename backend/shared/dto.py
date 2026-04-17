@@ -19,12 +19,17 @@ class PortionResponse(BaseDTO):
     remaining_portions: int
 
 class OrderInput(BaseDTO):
-    item_id: int
+    item_id: str
     table_id: int
     amount: float  
 
 class OrderResponse(OrderInput):
     id: Optional[str] = None
+
+class OrderStatusEvent(BaseDTO):
+    order_id: str
+    status: str
+    description: str
 
 class OrderIdResponse(BaseDTO):
     id: str

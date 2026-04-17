@@ -89,8 +89,8 @@ async def order_status_websocket(
             await websocket.send_json(payload_data)
             logger.debug(f"Relayed MQTT status for {order_id}: {payload_data}")
 
-            # 5. Check for the termination condition {"status": 3}
-            if payload_data.get("status") == 3:
+            # 5. Check for the termination condition {"status": "DONE"}
+            if payload_data.get("status") == ORDER_STATUS.DONE.name:
                 logger.info(f"Order {order_id} reached final status. Closing connection.")
                 break
 
@@ -128,7 +128,7 @@ async def order_status_websocket(websocket: WebSocket):
                 payload = json.loads(message.payload.decode())
                 await websocket.send_json(payload)
 
-                if payload.get("status") == ORDER_STATUS.DONE.value:
+                if payload.get("status") == ORDER_STATUS.DONE.name:
                     break
 
     except WebSocketDisconnect:

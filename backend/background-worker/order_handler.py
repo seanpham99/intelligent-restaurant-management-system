@@ -123,16 +123,34 @@ class OrderInsertHandler(MQTTWokerHander):
         sleep(MOCK_PROCESSING_TIME)
         bill = self.create_bill()
         for order_info in self.payload:
-            topic = f'order/status/{order_info['id']}'
+            topic = f"order/status/{order_info['id']}"
             # topic = f'order/status/1'
             order = self.create_order(bill.id, order_info)
             self.update_order_status(order, ORDER_STATUS.IN_QUEUE.value)
-            publish(self.mqtt, topic, {"status": ORDER_STATUS.IN_QUEUE.value, "description": ORDER_STATUS.IN_QUEUE.name}, self.loop)
+            publish(
+                self.mqtt,
+                topic,
+                {
+                    "order_id": order_info["id"],
+                    "status": ORDER_STATUS.IN_QUEUE.name,
+                    "description": ORDER_STATUS.IN_QUEUE.name,
+                },
+                self.loop,
+            )
             sleep(MOCK_PROCESSING_TIME)
 
             
             self.update_order_status(order, ORDER_STATUS.PROCESSING.value)
-            publish(self.mqtt, topic, {"status": ORDER_STATUS.PROCESSING.value, "description": ORDER_STATUS.PROCESSING.name}, self.loop)
+            publish(
+                self.mqtt,
+                topic,
+                {
+                    "order_id": order_info["id"],
+                    "status": ORDER_STATUS.PROCESSING.name,
+                    "description": ORDER_STATUS.PROCESSING.name,
+                },
+                self.loop,
+            )
             
             sleep(MOCK_PROCESSING_TIME)
             order_item = self.create_order_item(order_info)
@@ -140,7 +158,15 @@ class OrderInsertHandler(MQTTWokerHander):
             logger.info(f'Mock update ingredient amount: {results}')
         
             self.update_order_status(order, ORDER_STATUS.DONE.value)
-            publish(self.mqtt, topic, {"status": ORDER_STATUS.DONE.value, "description": ORDER_STATUS.DONE.name}, self.loop)
+            publish(
+                self.mqtt,
+                topic,
+                {
+                    "order_id": order_info["id"],
+                    "status": ORDER_STATUS.DONE.name,
+                    "description": ORDER_STATUS.DONE.name,
+                },
+                self.loop,
+            )
 
         
-
