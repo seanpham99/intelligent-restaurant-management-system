@@ -19,8 +19,11 @@ def main() -> None:
         data = json.loads(resp.read().decode("utf-8"))
 
     assert isinstance(data, list) and data, "menu list must be a non-empty array"
-    missing = REQUIRED - set(data[0].keys())
-    assert not missing, f"missing keys: {sorted(missing)}"
+    keys = set(data[0].keys())
+    assert keys == REQUIRED, (
+        f"contract key mismatch: missing={sorted(REQUIRED - keys)}, "
+        f"unexpected={sorted(keys - REQUIRED)}"
+    )
 
 
 if __name__ == "__main__":
