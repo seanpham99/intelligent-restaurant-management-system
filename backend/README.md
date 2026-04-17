@@ -122,7 +122,7 @@ Notes: about the `table_id` field, just keep it at 0 (Không xác định) for s
 
 ## Happy Path Test:
 1. Create order successfully: `backend/tests/test_order_router.py:80`
-2. WebSocket order status sucess: `backend/tests/test_order_router.py:129`
+2. WebSocket order status success: `backend/tests/test_order_router.py:129`
 3. WebSocket order status v2 success: `backend/tests/test_order_router.py:155`
 4. HTTPX client init/close success: `backend/tests/test_httpx_client.py:6`
 5. MQTT client init/close and standalone creation success: `backend/tests/test_mqtt_queue.py:8`, `backend/tests/test_mqtt_queue.py:42`
