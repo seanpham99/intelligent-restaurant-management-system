@@ -80,7 +80,7 @@ Ensure system stability, performance, and continuous operation.
 **2. Process payment**
 
 * Actor: Customer
-* Description: Customers complete their payment update their table's payment status to "Paid".
+* Description: Customers complete their payment and update their table's payment status to "Paid".
 
 **3. Manage order queues**
 
@@ -90,8 +90,8 @@ Ensure system stability, performance, and continuous operation.
 **4. Update cooking status**
 
 * Actor: Kitchen staff
-* Description: Staff update the dished status as "Cooking" or "Ready" to synchronize progress between between dining area and dashboards.
-
+* Description: Staff update the dished status to synchronize progress between between dining area and dashboards.
+v
 **5. Receive alerts and notifications**
 
 * Actor: Kitchen staff
@@ -121,9 +121,8 @@ Ensure system stability, performance, and continuous operation.
 ### 5.2 Queue Management
 - FR-05: The system shall display order queues on the KDS.
 - FR-06: The system shall apply smart prioritization to the queue based on dish complexity, kitchen’s capacity, and service time commitments.
-- FR-07: The system shall send automated alerts to kitchen staff when an order exceeds its wait-time threshold or a station becomes
-overloaded.
-- FR-08: The system shall update the order status (Pending, Confirmed, Cooking, Ready, Served, Cancelled) in real time on both the KDS and the customer-facing interface.
+- FR-07: The system shall send automated alerts to kitchen staff when an order exceeds its wait-time threshold or a station becomes overloaded.
+- FR-08: The system shall update the order status (In Queue, Processing and Done) in real time on both the KDS and the customer-facing interface.
 ### 5.3 Inventory
 - FR-09: The system shall track ingredient usage using IoT sensors.
 - FR-10: The system shall notify manager when supply runs low
@@ -133,7 +132,7 @@ overloaded.
 - FR-13: The system shall display kitchen load indicator on the dashboard, showing the number of active orders per station and an estimated throughput metric.
 - FR-14: The system shall generate analytics reports covering order volume, average preparation time, peak hours, and revenue, exportable in at least one standard format (CSV or PDF).
 ### 5.5 Payment
-- FR-15: The system shall track payment status (Unpaid, Pending, Processing, Paid, Refunded, Failed) and display it on the manager dashboard.
+- FR-15: The system shall track payment status and display it on the manager dashboard.
 - FR-16: The system shall generate table turnover reports showing average dining duration per table and total covers served per shift.
 
 ## 6. Non-Functional Requirements
