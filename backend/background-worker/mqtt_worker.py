@@ -1,7 +1,7 @@
 import asyncio
 import json
 from concurrent.futures import ThreadPoolExecutor
-from mqtt_worker_handler import MQTTWokerHander
+from mqtt_worker_handler import MQTTWorkerHandler
 from logger import logger
 from mqtt_queue import create_standalone_mqtt 
 
@@ -9,7 +9,7 @@ class MQTTWorker:
     def __init__(
         self, 
         topic: str, 
-        handler: MQTTWokerHander, 
+        handler: MQTTWorkerHandler, 
         executor: ThreadPoolExecutor,
         db_context_manager
     ):
@@ -20,13 +20,13 @@ class MQTTWorker:
         
         prefix = f"worker@{topic}"
         self.client = create_standalone_mqtt(prefix=prefix)
-        self.handler.set_mqtt(self.client)
+        self.handler.configure(mqtt=self.client)
 
     def run_handler(self, payload: dict):
         """Executed inside the Global Thread Pool."""
         try:
             with self.db_context_manager() as db:
-                self.handler.set_db(db).set_payload(payload).handle()
+                self.handler.configure(db=db, payload=payload).handle()
                 
         except Exception as e:
             logger.error(f"Handler Error on {self.topic}: {e}")
@@ -42,7 +42,7 @@ class MQTTWorker:
                 try:
                     payload = json.loads(message.payload.decode())
                     loop = asyncio.get_running_loop()
-                    self.handler.set_event_loop(loop)
+                    self.handler.configure(loop=loop)
                     
                     # Dispatch to the global executor
                     loop.run_in_executor(self.executor, self.run_handler, payload)
