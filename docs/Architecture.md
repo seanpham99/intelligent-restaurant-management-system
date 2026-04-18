@@ -169,119 +169,163 @@ The detailed architectural decision is documented in detail in ADR-001 (see Appe
 -----
 
 ## 3.3 Module View
-### 3.3.1 Overview
+### IRMS Class Diagram
 
-The Module View presents the structural decomposition of the Intelligent Restaurant Management System (IRMS) into its primary modules and sub-modules. This view answers the question: *what units make up the system, what is each unit responsible for, and how do they depend on each other?*
+#### 1. High-level structure
 
-The IRMS is decomposed into **six top-level modules**, arranged in two tiers:
+The diagram is organized into the following namespaces:
 
-- **Domain Tier (top row):** Customer Ordering, Kitchen Management, Inventory Management
-- **Platform Tier (bottom row):** Dashboard & Analytics, IoT Gateway, Infrastructure
-
-Each top-level module contains three sub-modules, which exist as **Is-Part-Of** decompositions of their parent — they are internal components that together realize the module's full responsibility.
-
----
-
-### 3.3.2 Module View Diagram
-
-DrawIO: https://drive.google.com/file/d/1afl59XtYECn7Y1KYi-1PMilPNwUwaOC7/view?usp=sharing
-
-### 3.3.3 Module Descriptions
-
-#### Customer Ordering Module
-Responsible for receiving and processing customer food orders placed through IoT-enabled devices such as QR menus and smart tablets. This module acts as the system's primary ingestion point for order data.
-
-| Sub-module | Responsibility |
-|---|---|
-| QR Menu Service | Renders and serves the digital menu to customers via QR code or tablet interface |
-| Order Validation Service | Validates submitted orders for completeness, item availability, and structural correctness before further processing |
-| Order Categorization Service | Classifies each validated order item by type (e.g., drink, appetizer, main dish) and routes it to the appropriate kitchen station |
+- **Infrastructure**: cross-cutting technical capabilities (eventing, authentication, logging, caching).
+- **IoTGateway**: device integration concerns (protocol adaptation, device registry, connection monitoring).
+- **CustomerOrdering**: menu access and order lifecycle (validation, persistence, notification).
+- **KitchenManagement**: kitchen operations (queue prioritization, station load management, KDS display, alert dispatch).
+- **InventoryManagement**: sensor integration and inventory oversight (readings, stock level management, safety monitoring, alerts).
+- **DashboardAnalytics**: reporting and operational visibility (analytics generation, exporting, real-time aggregation).
 
 ---
 
-#### Kitchen Management Module
-Manages the real-time flow of orders to kitchen stations, prioritizes the preparation queue, and ensures kitchen staff are informed of their workload and any issues requiring attention.
+#### 2. Namespace summary
 
-| Sub-module | Responsibility |
-|---|---|
-| Kitchen Display System (KDS) Service | Pushes order updates to IoT-connected KDS screens at each kitchen station in real time |
-| Queue Prioritization Engine | Dynamically reorders the preparation queue based on dish complexity, station load, and customer service time commitments |
-| Staff Notification Service | Emits alerts to kitchen staff when dishes require special attention or when a station becomes overloaded |
+#### Infrastructure
+The Infrastructure namespace supplies technical services used across domains:
+- Eventing: `IEventBus` (`MosquittoEventBus`) 
+- Authentication: `IAuthService` → `JWTAuthService`
+- Logging: `ILogger` → `ConsoleLogger`
+- Caching: `ICache` → `ValkeyCache`
 
----
+#### IoT Gateway
+This namespace encapsulates device communication and management:
+- Protocol transformation: `IProtocolAdapter` → `MQTTAdapter` / `HTTPAdapter` / `WebSocketAdapter`
+- Device lifecycle: `IDeviceRegistry` → `DeviceRegistry`
+- Connectivity: `IConnectionMonitor` → `ConnectionMonitor`
+- Coordination: `DeviceGateway` composes these abstractions and integrates with `IEventBus`
 
-#### Inventory Management Module
-Monitors ingredient levels and storage conditions using IoT sensor data, ensuring kitchen staff and managers are notified before stockouts occur or food safety thresholds are breached.
+#### Customer Ordering
+This namespace captures order intake and menu retrieval:
+- Validation: `IOrderValidator` → `OrderValidator` (dependent on `IMenuReader`)
+- Persistence: `IOrderReader` + `IOrderWriter` → `OrderRepository`
+- Menu access: `IMenuReader` → `MenuRepository`
+- Notification: `IOrderNotifier` → `EventOrderNotifier` (dependent on `IEventBus`)
+- Coordination: `OrderService` composes validator/reader/writer/notifier and event bus
 
-| Sub-module | Responsibility |
-|---|---|
-| Sensor Data Collector | Continuously collects weight readings from load-cell sensors and temperature readings from fridge/freezer sensors |
-| Stock Alert Service | Compares real-time ingredient levels against configured thresholds and triggers low-stock notifications |
-| Temperature Monitor Service | Evaluates temperature sensor readings against food safety standards and raises alerts on violations |
+#### Kitchen Management
+This namespace models kitchen operations and decision logic:
+- Queue ordering: `IPrioritizationStrategy` → `ComplexityStrategy` / `ServiceTimeStrategy` / `CapacityStrategy`
+- Station data: `IKitchenStationRepo` → KitchenStationRepo
+- Alerting: `IAlertDispatcher` → `StationAlertDispatcher` (dependent on `IEventBus`)
+- Display: `IKDSDisplay` → `KDSService` (dependent on `IKitchenStationRepository`, `IEventBus`)
+- Coordination: `KitchenEngine` composes strategy, bus, alert dispatcher, and display
 
----
+#### Inventory Management
+This namespace consolidates sensing and inventory governance:
+- Sensors: `ISensor` → `WeightSensor` / `TemperatureSensor` / `HumiditySensor`
+- Persistence: `IInventoryRepository` (interface)
+- Alerts: `IStockAlertService` → `StockAlertService` (dependent on repository + `IEventBus`)
+- Safety: `ITemperatureMonitor` → `TemperatureMonitor`
+- Coordination: `InventoryService` composes `List<ISensor>` with repository and monitoring/alert services
 
-#### Dashboard & Analytics Module
-Provides managers and staff with real-time operational visibility, business analytics, and predictive insights derived from system-wide data.
-
-| Sub-module | Responsibility |
-|---|---|
-| Real-Time Dashboard Service | Aggregates and displays live order status, kitchen load, device health, and active alerts |
-| Analytics & Reporting Service | Generates reports on order flow, table turnover, payment status, and operational KPIs |
-| Predictive Insight Engine | Applies forecasting logic to support staffing decisions, menu optimization, and peak hour prediction |
-
----
-
-#### Gateway Module
-Acts as the single integration boundary between all physical IoT devices and the IRMS platform, normalizing device communication through a standard protocol layer.
-
-| Sub-module | Responsibility |
-|---|---|
-| MQTT Broker Interface | Manages publish/subscribe messaging between all IoT devices and IRMS services using MQTT v3.1.1 or v5.0 |
-| Device Registry | Maintains the registry of connected devices, their types, statuses, and assigned roles within the system |
-| Protocol Adapter | Translates vendor-specific or non-standard device payloads into the canonical IRMS domain event format |
-
----
-
-#### Infrastructure Module
-Provides the foundational shared services that all other modules rely on for cross-cutting concerns including messaging, API routing, and identity management.
-
-| Sub-module | Responsibility |
-|---|---|
-| Event Bus (Message Broker) | Delivers asynchronous events between modules to decouple producers from consumers |
-| API Gateway | Acts as the single entry point for all external HTTP/S requests, handling routing, rate limiting, and load balancing |
-| Auth Service | Manages authentication and role-based authorization for all system users and services |
+#### DashboardAnalytics
+This namespace provides analytical and real-time reporting capabilities:
+- Analytics: `IAnalyticsEngine` → `OrderAnalyticsEngine`, `PredictiveEngine`
+- Real-time: `IRealtimeDataProvider` → `RealtimeDataAggregator` (dependent on `IEventBus`, `ICache`)
+- Export: `IReportExporter` → `PDFReportExporter`, `CSVReportExporter`
+- Coordination/UI boundary: `DashboardController` depends on analytics, real-time provider, exporter, and logger
 
 ---
 
-### 3.3.4 Module Dependencies (Uses Relationships)
+#### 3. SOLID analysis
 
-The following table documents all **«uses»** dependencies — relationships where one module depends on services provided by another at runtime.
+#### S — Single Responsibility Principle (SRP)
+**Conceptual statement:** SRP requires that a module exhibit high cohesion with respect to a single primary responsibility; consequently, it should have a limited and well-defined set of reasons to change. In object-oriented design, SRP is often realized by distinguishing *coordination* from *domain rules* and from *technical details*.
 
-| From | To | Relationship | Description |
-|---|---|---|---|
-| Customer Ordering | Kitchen Management | «uses» | Sends validated and categorized orders to kitchen stations |
-| Customer Ordering | IoT Gateway | «uses» | Receives incoming order events from IoT ordering devices via MQTT |
-| Kitchen Management | Inventory Management | «uses» | Triggers ingredient stock checks when orders are processed |
-| Kitchen Management | IoT Gateway | «uses» | Pushes order updates to KDS screens via MQTT |
-| Inventory Management | IoT Gateway | «uses» | Receives sensor data (weight and temperature) from IoT sensors |
-| Dashboard & Analytics | Customer Ordering | «uses» | Reads real-time and historical order status data |
-| Dashboard & Analytics | Kitchen Management | «uses» | Reads kitchen workload, queue state, and station performance |
-| Dashboard & Analytics | Inventory Management | «uses» | Reads inventory levels and alert history for reporting |
-| IoT Gateway | Infrastructure | «uses» | Publishes normalized device events onto the Event Bus |
-| All domain modules | Infrastructure | «uses» | All domain modules depend on Auth Service and API Gateway for identity and routing |
+**Evidence in the diagram:**
+
+1) **Separation of orchestration from validation and persistence**
+- `OrderService` coordinates the ordering workflow (place/cancel/status) but delegates validation to `IOrderValidator` (`OrderValidator`) and data access to `IOrderReader`/`IOrderWriter` (`OrderRepository`).
+- This separation constrains the impact of change: modifications to validation policy (e.g., menu constraints) need not affect the transaction workflow, and changes in persistence (schema, storage technology) need not alter business coordination.
+
+2) **Decomposition of kitchen concerns into strategy, alerting, and presentation**
+- Queue decision logic is encapsulated in `IPrioritizationStrategy` implementations; alert emission is externalized to `IAlertDispatcher`; display operations are represented by `IKDSDisplay`.
+- `KitchenEngine` thus functions as an orchestrator that composes specialized collaborators, reducing the probability that unrelated changes (e.g., KDS integration changes) propagate into queue policy code.
+
+3) **Inventory responsibilities partitioned by function**
+- `StockAlertService` addresses stock threshold detection and alert emission, while `TemperatureMonitor` addresses safety-range evaluation.
+- `InventoryService` aggregates these concerns at the coordination level rather than conflating threshold logic, safety logic, and sensor IO into a monolithic class.
 
 ---
 
-### 3.3.5 Key Architectural Observations
+#### O — Open/Closed Principle (OCP)
+**Conceptual statement:** OCP prescribes that stable components should remain closed to modification while allowing system behavior to be extended. The usual mechanism is to express variability through abstractions and to select concrete behavior through composition (e.g., Strategy, Adapter, Decorator).
 
-1. **Infrastructure as a shared foundation.** The Infrastructure Module is the only module on which all other modules depend for cross-cutting services. This makes it the highest-stability module in the system — its interfaces must be backward-compatible and its components highly available.
+**Evidence in the diagram:**
 
-2. **IoT Gateway as the integration boundary.** The IoT Gateway isolates all device-specific protocol and payload concerns from domain logic. Domain modules never communicate directly with physical devices; they only consume normalized events from the gateway.
+1) **Strategy-based extensibility in kitchen prioritization**
+- `KitchenEngine` depends on `IPrioritizationStrategy`; hence, new prioritization policies can be introduced via additional implementations without editing `KitchenEngine`.
+- This arrangement reduces regression risk in the orchestration logic, concentrating change into newly introduced classes.
 
-3. **Dashboard as a read-only consumer.** The Dashboard & Analytics Module depends on three domain modules but does not write back to any of them. This unidirectional dependency supports independent evolution of the analytics module and avoids tight coupling with the operational core.
+2) **Adapter-based extensibility in IoT protocols**
+- `DeviceGateway` depends on `IProtocolAdapter`; additional protocols are introduced by adding new adapter implementations.
+- The gateway thus remains insulated from protocol-specific parsing/serialization details.
 
-4. **Customer Ordering as the system entry point.** Module is the starting point of every customer-initiated workflow. Its dependency on both and reflects its role as the coordinator between the customer-facing interaction layer and the kitchen-facing execution layer.
+3) **Exporter-based extensibility in reporting**
+- `DashboardController` relies on `IReportExporter`, enabling new output formats by adding exporter implementations rather than by expanding conditional logic within the controller.
+
+4) **Pluggable infrastructure implementations**
+- The event bus (`IEventBus`) and cache (`ICache`) are abstracted.
+
+---
+
+#### L — Liskov Substitution Principle (LSP)
+**Conceptual statement:** LSP requires that objects of a subtype (or implementation) be substitutable for objects of a supertype (interface) without compromising correctness. While the diagram indicates substitutability structurally (via interfaces), behavioral substitutability depends on consistent semantics across implementations.
+
+**Evidence in the diagram:**
+
+1) **Event bus substitutability (`IEventBus`)**
+- Numerous clients depend on `IEventBus` (e.g., `EventOrderNotifier`, `StationAlertDispatcher`, `StockAlertService`, `DeviceGateway`).
+- For LSP compliance, these implementations must agree on semantic expectations: publication guarantees, subscription lifecycle semantics, ordering guarantees (if required), and failure handling behavior.
+
+2) **Protocol adapter substitutability (`IProtocolAdapter`)**
+- `DeviceGateway` should be able to process device messages using any adapter implementation.
+- LSP requires that adapters maintain consistent pre/postconditions (e.g., parse errors are reported uniformly; serialization is reversible within the domain constraints).
+
+3) **Exporter substitutability (`IReportExporter`)**
+- Exporters should accept the same report object and produce a valid file without requiring controller-side conditional logic beyond selecting an exporter.
+
+---
+
+#### I — Interface Segregation Principle (ISP)
+**Conceptual statement:** ISP advocates that interfaces be client-specific and minimal, avoiding “fat” interfaces that force implementers and consumers to depend on irrelevant operations. ISP reduces coupling and tends to improve testability and composability.
+
+**Evidence in the diagram:**
+
+1) **Explicit read/write segregation for orders**
+- `IOrderReader` and `IOrderWriter` separate query responsibilities from command responsibilities.
+- This enables read-only clients (notably `OrderAnalyticsEngine`) to depend solely on `IOrderReader`, thereby reducing accidental coupling to mutation operations.
+
+2) **Decomposition of device management responsibilities**
+- `IDeviceRegistry` (device metadata and status) is distinct from `IConnectionMonitor` (liveness/last-seen).
+- Clients can adopt only the needed dependency set; for example, a monitoring component need not depend on registration operations.
+
+3) **Separation between analytics and real-time feeds**
+- `IAnalyticsEngine` is distinct from `IRealtimeDataProvider`, which reflects different data lifecycles (batch/report generation vs near-real-time operational snapshots).
+
+---
+
+#### D — Dependency Inversion Principle (DIP)
+**Conceptual statement:** DIP states that high-level policy modules should not depend on low-level details; rather, both should depend on abstractions. Additionally, abstractions should not depend on details; details should depend on abstractions. This principle is closely associated with inversion of control and dependency injection.
+
+**Evidence in the diagram:**
+
+1) **High-level modules depend on interfaces**
+- `OrderService` depends on `IOrderValidator`, `IOrderReader`, `IOrderWriter`, `IOrderNotifier`, and `IEventBus`.
+- `KitchenEngine` depends on `IPrioritizationStrategy`, `IEventBus`, `IAlertDispatcher`, and `IKDSDisplay`.
+- `InventoryService` depends on `ISensor`, `IInventoryRepository`, `IStockAlertService`, and `ITemperatureMonitor`.
+- `DashboardController` depends on `IAnalyticsEngine`, `IRealtimeDataProvider`, `IReportExporter`, and `ILogger`.
+- `DeviceGateway` depends on `IProtocolAdapter`, `IDeviceRegistry`, `IConnectionMonitor`, and `IEventBus`.
+
+2) **Low-level details are positioned behind those interfaces**
+- Concrete infrastructure (e.g., `ValkeyCache`) is a detail hidden behind `ICache`.
+- Concrete data access (e.g., `MenuRepository`, `OrderRepository`) is a detail hidden behind domain-facing interfaces (`IMenuReader`, `IOrderReader`, `IOrderWriter`).
 
 ---
 
@@ -293,132 +337,106 @@ This view is vital for IRMS as the system must support both synchronous (HTTP/ R
 
 ---
 
-### 3.4.2 C&C Components
+### 3.4.2 C&C diagram
 
-| Component | Module | Main responsibility | Intances |
-| :--- | :--- | :--- | :--- |
-| `customerTablet : ClientApp` | Client Module | Allow customers to place orders through QR menus or tablet | 1..n |
-| `apiGateway : APIGateway` | API Gateway Module | Entry point for all external client requests | 1..2 |
-| `orderService : OrderService` | Ordering Module | Process and validate orders | 1..2 |
-| `eventBus : MessageBroker` | Messaging Module | Handle asynchronous communication using publish-subscribe pattern | 1 |
-| `kdsService` : `KDSService` | Kitchen Module | Update KDS with detailed order information | 1 |
-| `staffDashboard` : `StaffDashboard` | UI Model |Display real-time operational data | 1 |
-| `managerDashboard` : `ManagerDashboard` | UI Model | Display analytics, alerts, order status and kitchen load | 1 |
-| `loadCellSensor` : `LoadCellSensor` | Iot Module | Iot device tracks ingredient levels | 1..n |
-| `iotGateway` : `IotGateway` | Iot Module | Receive and forward sensor data | 1 |
-| `sensorCollector` : `SensorCollectorService` | Inventory Module | Process raw sensor data | 1 |
-| `stockAlertService` : `StockAlertService` | Inventory Module | Detect the low level of ingredients and send alert | 1 |
-| `staffNotificationService` : `StaffNotificationService` | Notification Module | Send notifications and alerts to staff | 1 | 
-| `kitchenDisplay` : `KitchenDisplay` | Kitchen Module | Display orders and notiofications in the kitchen | 1 |
-| `postgreDb` : `PostgreSQL` | Data Module | Store data | 1 |
-
----
-
-### 3.4.3 Connector and Communication Types
-IRMS uses three main types of connectors: Synchronous, Asynchronous communication and database access.
-#### 1. Synchronous Communication (HTTP/ REST)
-Synchronous connectors are utilized for interactions where an immediate acknowledgement or data response.
-
-- `customerTablet` → `apiGateway`: Submit orders and receive real-time validation.
-- `managerDashboard` → `apiGateway`: Fetch analytics and manage menu configurations.
-- `apiGateway` → `orderService`: Forward high-priority business logic requests.
-
-**Role:**
-- Client → Request Handler: Clients initiates requests, while backend provides Request Handlers to process and respond to these calls.
-- Caller → Service Provider: The apiGateway serves as the Caller, orchestrating requests to the orderService, which acts as the Functional Service Provider.
-
-#### 2. Asynchronous Communication (Event-driven/ MQTT)
-Asynchronous connectors decouple the system components, allowing for background to process and handle Iot communication:
-
-- `orderService` → `eventBus` : The `orderService` publishes a 'new order' event to `eventBus`.
-- `eventBus` → `kdsService` : The `kdsService` subscribed to this topic, it updates instantly the Kitchen's view.
-- `loadCellSensor`  →  `iotGateway` → `eventBus` : Data from `loadCellSensor` is routed through the `iotGateway` to the `eventBus`.
-- `eventBus` → `sensorColector`
-- `sensorCollector` → `stockAlertService`
-- `stockAlertService` → `eventBus`
-- `eventBus` → `staffNotificationService`
-- `eventBus` → `kdsService`
-  - The sensorCollector processes this stream, enabling the `stockAlertService` to trigger notifications for the `staffNotificationService`
-without blocking the main order flow.
-
-**Role:**
-- Publisher → EventBus → Sunscriber: Sensors or Services act as Publishers, broadcasting messages to specific Topics. The eventBus manages the routing to Subscribers, ensuring resilient delivery even during network fluctuations or high traffic spikes.
-
-#### 4. Database Access
-- Communication between functional services and postgreDb through synchronous database connections.
-- orderService ↔ postgreDb
-- sensorCollector ↔ postgreDb
-- Role: Reader/ Writer
-
---- 
-
-### 3.4.4 Key Runtime flow
-#### 1. Order Flow
-
-Customer tablet → API Gateway → Order Service → Event Bus → KDS Service → Staff Dashboard
-
-Description:
-- Customers submit an order through tablet or QR menus
-- API Gateway receives the request and delivers it to Order Service
-- Order Service process the order and publishes an event to the Event Bus
-- The KDS Service subscribes to the event and updates the kitchen display
-- Staff Dashboard updates order status for staff monitoring.
-
-
-#### 2. Inventory Flow
-
-Load-cell Sensor → IoT Gateway → Sensor Collector → Stock Alert Service → Manager Dashboard
-
-Description:
-- Load-cell Sensors send ingredient level data.
-- The IoT Gateway receives and forwards this data.
-- The Sensor Collector processes raw data.
-- The Stock Alert Service detects the low level of inventory
-- The Manager Dashboard displays alerts and inventory status.
-
-#### 3. Notification Flow
-
-Event Bus → Staff Notification Service → Kitchen Display
-
-Description:
-- Events such as delays, overload, or alerts are published to the Event Bus.
-- The Staff Notification Service manages these events.
-- Notifications are sent to the Kitchen Display to process
-
----
-
-### 3.4.5 Identify Ports and Roles
-Component communicate by exposing ports that fulfill designated roles within each connector:
-
-| Component | Port | Direction | Role |
-| :--- | :--- | :--- | :--- |
-| apiGateway | REST API | in | Request Handler |
-| orderService | service API | in | provider |
-| orderService | event-out | out | publisher |
-| eventBus | MQTT topic | in/ out | broker |
-| kdsService | event-in | in | subscriber |
-| sensorCollector | event-in | in | subscriber |
-| stockAlertService | event in/ out | in/out | subscriber/ publisher |
-| staffNotificationService | event-in | in | subscriber | 
-| postgreDb | DB Connection | in/out | storage provider | 
-
----
-
-### 3.4.6 C&C Diagram
 ![alt text](<"C&C view.png">)
 
 ---
 
-### 3.4.7 Consider Performance
-The C&C view supports the evaluation of runtime quality attributes:
+### 3.4.3 Main components
+The system consists of the following runtime components:
 
-- Responsiveness: when customer submit order, the systems will receive an immediate HTTP response from API Gateway
-- Scalability: By adopting asynchronous messaging, we can decouple producers from consumersto scale independently and more efficiently based on demand.
-- Reliability: By integrating a message broker, we've successfully minimized the direct dependencies between internal services. This setup ensures that event delivery remains resilient, as messages can be queued and retried even if a specific service temporarily goes offline.
-- Maintainability: Our architecture clearly divides the gateway, backend services, broker, and display clients into distinct layers. This separation makes it much easier to trace responsibilities and debug issues, as each component has a well-defined role within the restaurant system.
-- IoT support: We chose MQTT specifically for its efficiency in handling lightweight sensor data. It allows our IoT devices to publish events frequently—such as table occupancy or temperature updates—without putting a heavy strain on the network or hardware resources.
+**External and Gateway Layer**
+
+- IoT devices: It shows external clients, such as customer tablets and load-sensors.
+- API Gateway: It acts the entry point for extrenal clients, routing requests to internal services through HTTP/ REST
+- Device Gateway (IoT Gateway): It handles communication with IoT devices, such as load-cell sensors and forwards data to backend services.
+
+**Core services**
+
+- Menu Service: Provide menu data and interacts with cache for performance optimization.
+- Order Service: Handle order creation and processing. Publishes order events to the event bus.
+- Kitchen Engine: Process orders, prioritize tasks and coordinate kitchen workflow
+- KDS Service: Display real-time order status for kitchen staff
+- Dashboard Controller: provide monitoring and analytics dashboards for managers.
+- Stock Alert Service: Monitor inventory level and trigger alerts when the stock runs low.
+
+**Infrastructure Component**
+- Event Bus (Mosquito MQTT): A message broker enables asynchronous communication using the publish–subscribe pattern.
+- Cache (Valkey): Store frequently accessed data such as menu information to reduce latency.
+- Logger (Console Logger): Capture system logs for monitoring and debugging.
+--- 
+
+### 3.4.4 Connectors
+The system uses two types of connectors:
+
+**1. Asynchronous Communication (Event-Driven)**
+
+- Implemented using Mosquitto MQTT Event Bus
+- Services communicate via publish–subscribe pattern
+- Enables loose coupling and real-time updates
+
+**Examples**
+
+- Order Service → publishes order events
+- Kitchen Engine → subscribes to process orders
+- KDS Service & Dashboard → subscribe to update UI
+
+**2. Synchronous Communication**
+
+- It's used for direct interactions between components
+- It's implemented via HTTP/REST or direct method calls
+
+**Examples**
+
+- API Gateway → Order Service (HTTP request)
+- Menu Service ↔ Cache (get/set data)
+- Dashboard → Logger (write logs)
+
+### 3.4.5 Key Runtime flow
+#### 1. Order Flow
+
+Customer tablet → API Gateway → Order Service → Event Bus → KDS Service → Dashboard
+
+**Description:**
+
+Customers place orders via tablets. The API Gateway forwards requests to the Order Service, which processes and publishes events. These events are consumed by the KDS Service and Dashboard for real-time updates.
+
+
+#### 2. Inventory Flow
+
+Load-cell Sensor → Device Gateway → Sensor Processing → Stock Alert Service → Manager Dashboard
+
+**Description:**
+
+IoT sensors monitor ingredient levels. Data is transmitted through the Device Gateway and processed to detect low stock conditions, triggering alerts for managers.
+
+#### 3. Notification Flow
+
+Kitchen Engine → Event Bus → Notification/Alert Service → Kitchen Display
+
+**Description:**
+
+When delays or overloads occur, the Kitchen Engine publishes events that trigger notifications for kitchen staff.
 
 ---
+
+### 3.4.6 Design Rationale
+- Support real-time processing using event-driven communication
+- Ensure loose coupling between services via the event bus
+- Enable scalability, allowing independent deployment and scaling of services
+- Improve performance using caching mechanisms
+- Facilitate IoT integration through a dedicated Device Gateway
+
+---
+
+### 3.4.7 Trade-offs
+While the architecture provides flexibility and scalability, it introduces several trade-offs:
+
+- Increased complexity in debugging due to asynchronous communication
+- Eventual consistency instead of strong consistency
+- Dependency on message broker availability (Mosquitto)
+- Additional infrastructure overhead for managing event bus and IoT integration
 
 ## 3.5 Allocation View
 ### 3.5.1 Overview
@@ -460,6 +478,40 @@ A summary of key decisions is presented as the below:
 - ADR-003: Use Eclipse Mosquitto as the Message Broker.
 - ADR-004: Use API Gateway Pattern for External Client Access
 - ADR-005: Use Docker for deployment.
+
+## 3.7 Design Principles
+
+**Overview** To ensure consistent code implementation and strict adherence to the established system architecture, the IRMS development team applies core design principles. These principles serve as a guide for all decisions at the service and module levels, helping the system achieve non-functional requirements (NFRs) such as maintainability, fault tolerance, and real-time performance.
+
+**Core design principles in IRMS**
+
+**1. Separation of Concerns**
+* **Applications in IRMS:** Each microservice (or module) owns and manages a completely independent business boundary (bounded context). For example, Ordering, Kitchen, and Inventory operate separately.
+* **Architectural Links:** This principle directly supports the decision to use Service-Based Architecture, meeting the NFR-06 (Maintainability) criteria, which allows for easy partial updates without affecting the entire system.
+
+**2. Single Responsibility**
+* **Applications in IRMS:** Each software component performs only one task. Specifically, the Order Validation Service only checks the validity of the order; it is absolutely not involved in sorting or routing orders to the kitchen.
+* **Architectural Links:** Ensuring high modularity in the Module View structure makes the code easy to read and maintain.
+
+**3. Loose Coupling**
+* **Applications in IRMS:** The services communicate with each other primarily through events, rather than relying on direct API calls.
+* **Architectural Links:** Adhering to the decision to use Event-Driven Communication, by using Valkey and Mosquitto as intermediaries, the ordering system continues to function normally even if the kitchen system is overloaded, ensuring NFR-03 availability.
+
+**4. High Cohesion**
+* **Applications in IRMS:** All the logic related to arranging and managing kitchen queues (kitchen queue logic) is entirely centralized within the Kitchen Management module.
+* **Architectural Links:** Minimize unnecessary network calls between services, supporting faster real-time processing speeds with NFR-01 (Performance).
+
+**5. Fail Fast**
+* **Applications in IRMS:** Any invalid orders (incorrect format, missing information) will be rejected immediately at the API Gateway, instead of being allowed to pass through the internal processing pipelines.
+* **Architectural Links:** This helps protect the system from junk data and aligns with the decision to adopt the API Gateway template.
+
+**6. Design for Failure**
+* **Applications in IRMS:** The system acknowledges that network connections or devices can fail at any time. Therefore, each service is designed with built-in circuit breakers and fallback behaviors.
+* **Architectural Links:** Directly address NFR-05 (Reliability) and enhance Fault Tolerance characteristics for the entire system.
+
+**7. Observability by Design**
+* **Applications in IRMS:** All services must generate structured logs, performance metrics, and distribution traces from the very beginning of development.
+* **Architectural Links:** This helps compensate for the difficulty in tracking data flow inherent in event-driven mechanisms, ensuring the system achieves NFR-09 (Observability).
 
 
 
